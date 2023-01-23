@@ -1,0 +1,7 @@
+[package]
+name = "qd-cgns-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cgns-sys = { git = "https://github.com/awoimbee/cgns-sys.git", rev="5a010c7" }
