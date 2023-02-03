@@ -1,6 +1,6 @@
 # Quick and dirty CGNS API for Rust
 
-This is an unmaintained idiomatic wrapper for cgns-sys.
+This is an unmaintained idiomatic wrapper for libcgns.
 
 ## Using
 

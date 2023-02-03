@@ -3,5 +3,6 @@ name = "qd-cgns-rs"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-cgns-sys = { git = "https://github.com/awoimbee/cgns-sys.git", rev="5a010c7" }
+[build-dependencies]
+bindgen = "0.63.0"
+regex = "1.7"
