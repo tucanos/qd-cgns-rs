@@ -11,10 +11,10 @@ use cgns_sys::{
     cg_array_write, cg_base_write, cg_biter_read, cg_biter_write, cg_close, cg_coord_info,
     cg_coord_read, cg_coord_write, cg_elements_read, cg_get_error, cg_golist, cg_nsections,
     cg_open, cg_section_read, cg_section_write, cg_ziter_write, cg_zone_read, cg_zone_write,
-    cgsize_t, DataType_t, CG_MODE_MODIFY, CG_MODE_READ, CG_MODE_WRITE,
+    DataType_t, CG_MODE_MODIFY, CG_MODE_READ, CG_MODE_WRITE,
 };
 
-pub use cgns_sys::ElementType_t;
+pub use cgns_sys::{cgsize_t, ElementType_t};
 pub struct Error(i32);
 type Result<T> = std::result::Result<T, Error>;
 
@@ -290,6 +290,7 @@ impl File {
     }
 
     pub fn zone_read(&self, base: Base, zone: Zone) -> Result<(String, [usize; 9])> {
+        let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = [0 as cgsize_t; 9];
         let mut buf = [0_u8; 64];
         let err = unsafe {
@@ -309,6 +310,7 @@ impl File {
     }
 
     pub fn coord_info(&self, base: Base, zone: Zone, c: i32) -> Result<(DataType_t, String)> {
+        let _l = CGNS_MUTEX.lock().unwrap();
         let mut datatype = DataType_t::Integer;
         let mut raw_name = [0_u8; 64];
         let err = unsafe {
@@ -337,6 +339,7 @@ impl File {
         range_max: usize,
         coord_array: &mut [f64],
     ) -> Result<()> {
+        let _l = CGNS_MUTEX.lock().unwrap();
         let range_min = range_min as cgsize_t;
         let range_max = range_max as cgsize_t;
         let p = CString::new(coordname).unwrap();
@@ -398,6 +401,7 @@ impl File {
         elements: &mut [i32],
         parent_data: &mut [i32],
     ) -> Result<()> {
+        let _l = CGNS_MUTEX.lock().unwrap();
         let ptr = if parent_data.is_empty() {
             std::ptr::null_mut()
         } else {
@@ -414,6 +418,7 @@ impl File {
     }
 
     pub fn nsections(&self, base: Base, zone: Zone) -> Result<i32> {
+        let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
         let e = unsafe { cg_nsections(self.0, base.0, zone.0, &mut r) };
         if e == 0 {
