@@ -103,18 +103,18 @@ pub fn open(path: &str, mode: Mode) -> Result<File> {
 pub struct File(std::os::raw::c_int);
 #[derive(Copy, Clone)]
 pub struct Base(std::os::raw::c_int);
-impl Base {
-    #[must_use]
-    pub fn new(arg: i32) -> Base {
-        Base(arg)
+impl From<i32> for Base {
+    fn from(value: i32) -> Self {
+        assert!(value >= 1);
+        Base(value)
     }
 }
 #[derive(Copy, Clone)]
 pub struct Zone(std::os::raw::c_int);
-impl Zone {
-    #[must_use]
-    pub fn new(arg: i32) -> Zone {
-        Zone(arg)
+impl From<i32> for Zone {
+    fn from(value: i32) -> Self {
+        assert!(value >= 1);
+        Zone(value)
     }
 }
 
