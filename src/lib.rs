@@ -131,14 +131,14 @@ fn raw_to_string(buf: &[u8]) -> String {
 pub struct SectionInfo {
     pub section_name: String,
     pub typ: ElementType_t,
-    pub start: cgsize_t,
-    pub end: cgsize_t,
+    pub start: usize,
+    pub end: usize,
     pub nbndry: i32,
 }
 
 impl SectionInfo {
     #[must_use]
-    pub fn new(typ: ElementType_t, end: i32) -> Self {
+    pub fn new(typ: ElementType_t, end: usize) -> Self {
         Self {
             section_name: "Elem".to_owned(),
             typ,
@@ -231,14 +231,18 @@ impl File {
         &mut self,
         base: Base,
         zonename: &str,
-        vertex_size: cgsize_t,
-        cell_size: cgsize_t,
-        boundary_size: cgsize_t,
+        vertex_size: usize,
+        cell_size: usize,
+        boundary_size: usize,
     ) -> Result<Zone> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let zonename = CString::new(zonename).unwrap();
         let mut z: i32 = 0;
-        let size = [vertex_size, cell_size, boundary_size];
+        let size = [
+            vertex_size as cgsize_t,
+            cell_size as cgsize_t,
+            boundary_size as cgsize_t,
+        ];
         let e = unsafe {
             cg_zone_write(
                 self.0,
@@ -285,7 +289,7 @@ impl File {
         }
     }
 
-    pub fn zone_read(&self, base: Base, zone: Zone) -> Result<(String, [cgsize_t; 9])> {
+    pub fn zone_read(&self, base: Base, zone: Zone) -> Result<(String, [usize; 9])> {
         let mut r = [0 as cgsize_t; 9];
         let mut buf = [0_u8; 64];
         let err = unsafe {
@@ -298,7 +302,7 @@ impl File {
             )
         };
         if err == 0 {
-            Ok((raw_to_string(&buf), r))
+            Ok((raw_to_string(&buf), r.map(|s| s as usize)))
         } else {
             Err(err.into())
         }
@@ -329,10 +333,12 @@ impl File {
         base: Base,
         zone: Zone,
         coordname: &str,
-        range_min: i32,
-        range_max: i32,
+        range_min: usize,
+        range_max: usize,
         coord_array: &mut [f64],
     ) -> Result<()> {
+        let range_min = range_min as cgsize_t;
+        let range_max = range_max as cgsize_t;
         let p = CString::new(coordname).unwrap();
         let err = unsafe {
             cg_coord_read(
@@ -370,8 +376,8 @@ impl File {
                 zone.0,
                 section_name.as_ptr(),
                 args.typ,
-                args.start,
-                args.end,
+                args.start as cgsize_t,
+                args.end as cgsize_t,
                 args.nbndry,
                 elements.as_ptr(),
                 &mut c,
@@ -427,6 +433,8 @@ impl File {
         let mut info = SectionInfo::default();
         let mut parent_flag = 0_i32;
         let mut raw_name = [0_u8; 64];
+        let mut start: cgsize_t = 0;
+        let mut end: cgsize_t = 0;
         let e = unsafe {
             cg_section_read(
                 self.0,
@@ -435,14 +443,16 @@ impl File {
                 section,
                 raw_name.as_mut_ptr().cast(),
                 &mut info.typ,
-                &mut info.start,
-                &mut info.end,
+                &mut start,
+                &mut end,
                 &mut info.nbndry,
                 &mut parent_flag,
             )
         };
         if e == 0 {
             info.section_name = raw_to_string(&raw_name);
+            info.start = start as usize;
+            info.end = end as usize;
             Ok((info, parent_flag != 0))
         } else {
             Err(e.into())
