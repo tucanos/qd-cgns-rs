@@ -9,9 +9,9 @@ use cgns_sys::DataType_t::RealDouble;
 use cgns_sys::ZoneType_t::Unstructured;
 use cgns_sys::{
     cg_array_write, cg_base_write, cg_biter_read, cg_biter_write, cg_close, cg_coord_info,
-    cg_coord_read, cg_coord_write, cg_elements_read, cg_get_error, cg_golist, cg_open,
-    cg_section_read, cg_section_write, cg_ziter_write, cg_zone_read, cg_zone_write, cgsize_t,
-    DataType_t, CG_MODE_MODIFY, CG_MODE_READ, CG_MODE_WRITE,
+    cg_coord_read, cg_coord_write, cg_elements_read, cg_get_error, cg_golist, cg_nsections,
+    cg_open, cg_section_read, cg_section_write, cg_ziter_write, cg_zone_read, cg_zone_write,
+    cgsize_t, DataType_t, CG_MODE_MODIFY, CG_MODE_READ, CG_MODE_WRITE,
 };
 
 pub use cgns_sys::ElementType_t;
@@ -402,6 +402,16 @@ impl File {
         };
         if e == 0 {
             Ok(())
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn nsections(&self, base: Base, zone: Zone) -> Result<i32> {
+        let mut r = 0;
+        let e = unsafe { cg_nsections(self.0, base.0, zone.0, &mut r) };
+        if e == 0 {
+            Ok(r)
         } else {
             Err(e.into())
         }
