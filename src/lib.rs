@@ -467,6 +467,8 @@ impl File {
 
 impl Drop for File {
     fn drop(&mut self) {
-        self.close().unwrap();
+        if let Err(e) = self.close() {
+            eprintln!("{:?}", e);
+        }
     }
 }
