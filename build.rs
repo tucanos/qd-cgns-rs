@@ -49,8 +49,6 @@ fn main() {
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
         })
-        //.size_t_is_usize(true)
-        //.type_alias("cgsize_t")
         .generate()
         .expect("generate bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
