@@ -23,24 +23,27 @@ fn replace_string<P: AsRef<Path>>(filename: P, oldre: &Regex, newstr: &str) -> S
 
 fn main() {
     println!("cargo:rustc-link-lib=cgns");
-    println!("cargo:rerun-if-changed=cgnslib.h");
+    println!("cargo:rerun-if-env-changed=CGNS_INLCUDE_DIR");
     let include_dir = PathBuf::from(match env::var("CGNS_INLCUDE_DIR") {
         Ok(x) => x,
         Err(_) => "/usr/include".to_owned(),
     });
+    let type_path = include_dir.join("cgnstypes.h");
+    let main_path = include_dir.join("cgnslib.h");
+    println!("cargo:rerun-if-changed={}", type_path.display());
+    println!("cargo:rerun-if-changed={}", main_path.display());
     // We want typedef and not #define to get a strongly type wrapper so
     // we disable CG_BUILD_LEGACY
     let type_header = replace_string(
-        include_dir.join("cgnstypes.h"),
+        type_path,
         &Regex::new("#define CG_BUILD_LEGACY .*").unwrap(),
         "",
     );
     let main_header = replace_string(
-        include_dir.join("cgnslib.h"),
+        main_path,
         &Regex::new("#include \"cgnstypes.h\"").unwrap(),
         &type_header,
     );
-    dbg!(&main_header);
     let bindings = bindgen::Builder::default()
         .header_contents("cgnslib.h", &main_header)
         .default_enum_style(bindgen::EnumVariation::Rust {
