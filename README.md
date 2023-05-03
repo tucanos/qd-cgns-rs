@@ -2,8 +2,8 @@
 
 This is an unmaintained idiomatic wrapper for libcgns.
 
-## Using
+## Using
 
 ```
-cargo add --git https://github.com/jeromerobert/qd-cgns-rs.git
+cargo add --git https://github.com/tucanos/qd-cgns-rs.git
 ```
