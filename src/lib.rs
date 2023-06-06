@@ -10,8 +10,9 @@ use cgns_sys::ZoneType_t::Unstructured;
 use cgns_sys::{
     cg_array_write, cg_base_write, cg_biter_read, cg_biter_write, cg_close, cg_coord_info,
     cg_coord_read, cg_coord_write, cg_elements_read, cg_get_error, cg_golist, cg_nsections,
-    cg_open, cg_section_read, cg_section_write, cg_ziter_write, cg_zone_read, cg_zone_write,
-    DataType_t, CG_MODE_MODIFY, CG_MODE_READ, CG_MODE_WRITE,
+    cg_open, cg_save_as, cg_section_read, cg_section_write, cg_ziter_write, cg_zone_read,
+    cg_zone_write, DataType_t, CG_FILE_ADF, CG_FILE_ADF2, CG_FILE_HDF5, CG_FILE_NONE,
+    CG_MODE_MODIFY, CG_MODE_READ, CG_MODE_WRITE,
 };
 
 pub use cgns_sys::{cgsize_t, ElementType_t};
@@ -22,6 +23,13 @@ pub enum Mode {
     Read,
     Write,
     Modify,
+}
+
+pub enum FileType {
+    NONE,
+    ADF,
+    HDF5,
+    ADF2,
 }
 
 pub trait CgnsDataType {
@@ -69,6 +77,17 @@ impl From<Mode> for i32 {
             Mode::Read => CG_MODE_READ as i32,
             Mode::Write => CG_MODE_WRITE as i32,
             Mode::Modify => CG_MODE_MODIFY as i32,
+        }
+    }
+}
+
+impl From<FileType> for i32 {
+    fn from(t: FileType) -> i32 {
+        match t {
+            FileType::NONE => CG_FILE_NONE as i32,
+            FileType::ADF => CG_FILE_ADF as i32,
+            FileType::ADF2 => CG_FILE_ADF2 as i32,
+            FileType::HDF5 => CG_FILE_HDF5 as i32,
         }
     }
 }
@@ -157,6 +176,24 @@ impl File {
             Ok(())
         } else {
             Err(f.into())
+        }
+    }
+
+    pub fn save_as(
+        &self,
+        filename: &str,
+        file_type: FileType,
+        follow_links: bool,
+    ) -> Result<()> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let filename = CString::new(filename).unwrap();
+        let follow_links = i32::from(follow_links);
+        let file_type = file_type.into();
+        let e = unsafe { cg_save_as(self.0, filename.as_ptr(), file_type, follow_links) };
+        if e == 0 {
+            Ok(())
+        } else {
+            Err(e.into())
         }
     }
 
