@@ -40,13 +40,13 @@ impl<'a> GotoContext<'a> {
         let arrayname = CString::new(arrayname).unwrap();
         assert_eq!(
             dimensions.iter().copied().reduce(|a, v| a * v).unwrap(),
-            data.len() as i32
+            i32::try_from(data.len()).unwrap()
         );
         let e = unsafe {
             cg_array_write(
                 arrayname.as_ptr(),
                 T::SYS,
-                dimensions.len() as i32,
+                i32::try_from(dimensions.len()).unwrap(),
                 dimensions.as_ptr(),
                 data.as_ptr().cast::<std::ffi::c_void>(),
             )
@@ -468,7 +468,7 @@ impl File {
 impl Drop for File {
     fn drop(&mut self) {
         if let Err(e) = self.close() {
-            eprintln!("{:?}", e);
+            eprintln!("{e:?}");
         }
     }
 }
