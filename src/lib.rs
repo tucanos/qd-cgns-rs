@@ -5,14 +5,15 @@ use std::sync::{Mutex, MutexGuard};
 
 mod cgns_sys;
 
+pub use cgns_sys::DataType_t;
 use cgns_sys::DataType_t::RealDouble;
 use cgns_sys::ZoneType_t::Unstructured;
 use cgns_sys::{
     cg_array_write, cg_base_write, cg_biter_read, cg_biter_write, cg_close, cg_coord_info,
     cg_coord_read, cg_coord_write, cg_elements_read, cg_get_error, cg_golist, cg_nsections,
     cg_open, cg_save_as, cg_section_read, cg_section_write, cg_ziter_write, cg_zone_read,
-    cg_zone_write, DataType_t, CG_FILE_ADF, CG_FILE_ADF2, CG_FILE_HDF5, CG_FILE_NONE,
-    CG_MODE_MODIFY, CG_MODE_READ, CG_MODE_WRITE,
+    cg_zone_write, CG_FILE_ADF, CG_FILE_ADF2, CG_FILE_HDF5, CG_FILE_NONE, CG_MODE_MODIFY,
+    CG_MODE_READ, CG_MODE_WRITE,
 };
 
 pub use cgns_sys::{cgsize_t, ElementType_t};
@@ -32,11 +33,46 @@ pub enum FileType {
     ADF2,
 }
 
+pub enum GotoQueryItem {
+    Name(String),
+    LabelIndex(String, i32),
+}
+
+impl GotoQueryItem {
+    fn string(&self) -> &str {
+        match self {
+            GotoQueryItem::Name(n) => n,
+            GotoQueryItem::LabelIndex(n, _) => n,
+        }
+    }
+    fn index(&self) -> i32 {
+        match self {
+            GotoQueryItem::Name(_) => 0,
+            GotoQueryItem::LabelIndex(_, i) => *i,
+        }
+    }
+}
+
+impl From<&str> for GotoQueryItem {
+    fn from(value: &str) -> Self {
+        Self::Name(value.into())
+    }
+}
+
+impl From<(&str, i32)> for GotoQueryItem {
+    fn from(value: (&str, i32)) -> Self {
+        Self::LabelIndex(value.0.into(), value.1)
+    }
+}
+
 pub trait CgnsDataType {
     const SYS: DataType_t;
 }
 
-pub struct GotoContext<'a>(MutexGuard<'a, ()>);
+pub struct GotoContext<'a> {
+    _mutex: MutexGuard<'a, ()>,
+    file: &'a File,
+}
 
 impl<'a> GotoContext<'a> {
     pub fn array_write<T: CgnsDataType>(
@@ -65,10 +101,76 @@ impl<'a> GotoContext<'a> {
             Err(e.into())
         }
     }
+
+    pub fn narrays(&self) -> Result<i32> {
+        let mut r = 0;
+        let e = unsafe { cgns_sys::cg_narrays(&mut r) };
+        if e == 0 {
+            Ok(r)
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn array_info(&self, array_id: i32) -> Result<(String, DataType_t, Vec<i32>)> {
+        let mut raw_name = [0_u8; 64];
+        let mut dimensions = [0; 12];
+        let mut rank = 0;
+        let mut datatype = DataType_t::DataTypeNull;
+        let e = unsafe {
+            cgns_sys::cg_array_info(
+                array_id,
+                raw_name.as_mut_ptr().cast(),
+                &mut datatype,
+                &mut rank,
+                dimensions.as_mut_ptr(),
+            )
+        };
+        if e == 0 {
+            let rank = rank.try_into().unwrap();
+            Ok((
+                raw_to_string(&raw_name),
+                datatype,
+                dimensions[0..rank].to_vec(),
+            ))
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn array_read<T: CgnsDataType>(&self, array_id: i32, data: &mut [T]) -> Result<()> {
+        let e = unsafe { cgns_sys::cg_array_read(array_id, data.as_mut_ptr().cast()) };
+        if e == 0 {
+            Ok(())
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn gorel(&self, query: &[GotoQueryItem]) -> Result<()> {
+        // varargs is not yet available in stable Rust so we recurse
+        if let Some((head, queue)) = query.split_first() {
+            let end = "end\0".as_bytes().as_ptr();
+            let (s, i) = (head.string(), head.index());
+            let s = CString::new(s).unwrap();
+            let e = unsafe { cgns_sys::cg_gorel(self.file.0, s.as_ptr(), i, end) };
+            if e == 0 {
+                self.gorel(queue)
+            } else {
+                Err(e.into())
+            }
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl CgnsDataType for i32 {
     const SYS: DataType_t = DataType_t::Integer;
+}
+
+impl CgnsDataType for u8 {
+    const SYS: DataType_t = DataType_t::Character;
 }
 
 impl From<Mode> for i32 {
@@ -179,12 +281,7 @@ impl File {
         }
     }
 
-    pub fn save_as(
-        &self,
-        filename: &str,
-        file_type: FileType,
-        follow_links: bool,
-    ) -> Result<()> {
+    pub fn save_as(&self, filename: &str, file_type: FileType, follow_links: bool) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let filename = CString::new(filename).unwrap();
         let follow_links = i32::from(follow_links);
@@ -220,8 +317,22 @@ impl File {
         }
     }
 
+    pub fn goto(&self, base: Base, query: &[GotoQueryItem]) -> Result<GotoContext> {
+        let _mutex = CGNS_MUTEX.lock().unwrap();
+        let end = "end\0".as_bytes().as_ptr();
+        let e = unsafe { cgns_sys::cg_goto(self.0, base.0, end) };
+        if e == 0 {
+            // varargs is not yet available in stable Rust so we rely on cg_gorel
+            let l = GotoContext { _mutex, file: self };
+            l.gorel(query)?;
+            Ok(l)
+        } else {
+            Err(e.into())
+        }
+    }
+
     pub fn golist(&self, base: Base, labels: &[&str], index: &[i32]) -> Result<GotoContext> {
-        let l = CGNS_MUTEX.lock().unwrap();
+        let _mutex = CGNS_MUTEX.lock().unwrap();
         let labels: Vec<_> = labels.iter().map(|&s| CString::new(s).unwrap()).collect();
         let mut labels_ptr: Vec<_> = labels.iter().map(|s| s.as_ptr() as *mut i8).collect();
         let e = unsafe {
@@ -234,7 +345,7 @@ impl File {
             )
         };
         if e == 0 {
-            Ok(GotoContext(l))
+            Ok(GotoContext { _mutex, file: self })
         } else {
             Err(e.into())
         }
@@ -449,6 +560,17 @@ impl File {
         };
         if e == 0 {
             Ok(())
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn nzones(&self, base: Base) -> Result<i32> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let mut r = 0;
+        let e = unsafe { cgns_sys::cg_nzones(self.0, base.0, &mut r) };
+        if e == 0 {
+            Ok(r)
         } else {
             Err(e.into())
         }
