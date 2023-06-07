@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::sync::{Mutex, MutexGuard};
 
 mod cgns_sys;
-
+pub mod tools;
 pub use cgns_sys::DataType_t;
 use cgns_sys::DataType_t::RealDouble;
 use cgns_sys::ZoneType_t::Unstructured;
