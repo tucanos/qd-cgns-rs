@@ -1,4 +1,5 @@
 use core::ffi::CStr;
+use std::array;
 use std::ffi::{c_void, CString};
 use std::fmt::Debug;
 use std::sync::{Mutex, MutexGuard};
@@ -53,6 +54,12 @@ impl GotoQueryItem {
     }
 }
 
+impl From<String> for GotoQueryItem {
+    fn from(value: String) -> Self {
+        Self::Name(value)
+    }
+}
+
 impl From<&str> for GotoQueryItem {
     fn from(value: &str) -> Self {
         Self::Name(value.into())
@@ -73,6 +80,8 @@ pub struct GotoContext<'a> {
     _mutex: MutexGuard<'a, ()>,
     file: &'a File,
 }
+
+type Where = (Base, Vec<(String, i32)>);
 
 impl<'a> GotoContext<'a> {
     pub fn array_write<T: CgnsDataType>(
@@ -173,6 +182,35 @@ impl<'a> GotoContext<'a> {
             Err(e.into())
         }
     }
+
+    pub fn r#where(&self) -> Result<Where> {
+        const MAX_DEPTH: usize = cgns_sys::CG_MAX_GOTO_DEPTH as usize;
+        let mut index = [0_i32; MAX_DEPTH];
+        let mut base = 0;
+        let mut depth = 0;
+        let mut file = 0;
+        let mut label = [[0_u8; 34]; MAX_DEPTH];
+        let mut labelp: [_; MAX_DEPTH] = array::from_fn(|i| label[i].as_mut_ptr());
+        let e = unsafe {
+            cgns_sys::cg_where(
+                &mut file,
+                &mut base,
+                &mut depth,
+                labelp.as_mut_ptr().cast(),
+                index.as_mut_ptr(),
+            )
+        };
+        if e == 0 {
+            Ok((
+                Base(base),
+                (0..depth as usize)
+                    .map(|i| (raw_to_string(&label[i]), index[i]))
+                    .collect(),
+            ))
+        } else {
+            Err(e.into())
+        }
+    }
 }
 
 impl CgnsDataType for i32 {
@@ -231,8 +269,9 @@ pub fn open(path: &str, mode: Mode) -> Result<File> {
     }
 }
 
+#[derive(Debug)]
 pub struct File(std::os::raw::c_int);
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Base(std::os::raw::c_int);
 impl From<i32> for Base {
     fn from(value: i32) -> Self {
