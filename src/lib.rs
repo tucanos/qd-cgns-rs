@@ -163,6 +163,16 @@ impl<'a> GotoContext<'a> {
             Ok(())
         }
     }
+
+    pub fn famname_write(&self, family_name: &str) -> Result<()> {
+        let n = CString::new(family_name).unwrap();
+        let e = unsafe { cgns_sys::cg_famname_write(n.as_ptr()) };
+        if e == 0 {
+            Ok(())
+        } else {
+            Err(e.into())
+        }
+    }
 }
 
 impl CgnsDataType for i32 {
