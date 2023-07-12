@@ -590,6 +590,39 @@ impl File {
         }
     }
 
+    pub fn poly_section_write(
+        &mut self,
+        base: Base,
+        zone: Zone,
+        args: &SectionInfo,
+        elements: &[cgsize_t],
+        offsets: &[cgsize_t],
+    ) -> Result<()>{
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let section_name = CString::new(args.section_name.clone()).unwrap();
+        let mut c = 0;
+        let e = unsafe {
+            cgns_sys::cg_poly_section_write(
+                self.0,
+                base.0,
+                zone.0,
+                section_name.as_ptr(),
+                args.typ,
+                args.start as cgsize_t,
+                args.end as cgsize_t,
+                args.nbndry,
+                elements.as_ptr(),
+                offsets.as_ptr(),
+                &mut c,
+            )
+        };
+        if e == 0 {
+            Ok(())
+        } else {
+            Err(e.into())
+        }
+    }
+
     pub fn elements_read(
         &self,
         base: Base,
