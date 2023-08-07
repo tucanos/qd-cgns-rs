@@ -77,7 +77,8 @@ pub trait CgnsDataType {
 }
 
 pub struct GotoContext<'a> {
-    _mutex: MutexGuard<'a, ()>,
+    #[allow(dead_code)]
+    mutex: MutexGuard<'a, ()>,
     file: &'a File,
 }
 
@@ -367,12 +368,12 @@ impl File {
     }
 
     pub fn goto(&self, base: Base, query: &[GotoQueryItem]) -> Result<GotoContext> {
-        let _mutex = CGNS_MUTEX.lock().unwrap();
+        let mutex = CGNS_MUTEX.lock().unwrap();
         let end = b"end\0".as_ptr();
         let e = unsafe { cgns_sys::cg_goto(self.0, base.0, end) };
         if e == 0 {
             // varargs is not yet available in stable Rust so we rely on cg_gorel
-            let l = GotoContext { _mutex, file: self };
+            let l = GotoContext { mutex, file: self };
             l.gorel(query)?;
             Ok(l)
         } else {
@@ -381,7 +382,7 @@ impl File {
     }
 
     pub fn golist(&self, base: Base, labels: &[&str], index: &[i32]) -> Result<GotoContext> {
-        let _mutex = CGNS_MUTEX.lock().unwrap();
+        let mutex = CGNS_MUTEX.lock().unwrap();
         let labels: Vec<_> = labels.iter().map(|&s| CString::new(s).unwrap()).collect();
         let mut labels_ptr: Vec<_> = labels.iter().map(|s| s.as_ptr() as *mut i8).collect();
         let e = unsafe {
@@ -394,7 +395,7 @@ impl File {
             )
         };
         if e == 0 {
-            Ok(GotoContext { _mutex, file: self })
+            Ok(GotoContext { mutex, file: self })
         } else {
             Err(e.into())
         }
