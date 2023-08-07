@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-bindgen = "0.63.0"
-regex = "1.7"
+bindgen = "0.66.1"
+regex = "1.9.3"
