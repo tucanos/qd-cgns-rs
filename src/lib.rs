@@ -42,14 +42,14 @@ pub enum GotoQueryItem {
 impl GotoQueryItem {
     fn string(&self) -> &str {
         match self {
-            GotoQueryItem::Name(n) => n,
-            GotoQueryItem::LabelIndex(n, _) => n,
+            Self::Name(n) => n,
+            Self::LabelIndex(n, _) => n,
         }
     }
-    fn index(&self) -> i32 {
+    const fn index(&self) -> i32 {
         match self {
-            GotoQueryItem::Name(_) => 0,
-            GotoQueryItem::LabelIndex(_, i) => *i,
+            Self::Name(_) => 0,
+            Self::LabelIndex(_, i) => *i,
         }
     }
 }
@@ -159,7 +159,7 @@ impl<'a> GotoContext<'a> {
     pub fn gorel(&self, query: &[GotoQueryItem]) -> Result<()> {
         // varargs is not yet available in stable Rust so we recurse
         if let Some((head, queue)) = query.split_first() {
-            let end = "end\0".as_bytes().as_ptr();
+            let end = b"end\0".as_ptr();
             let (s, i) = (head.string(), head.index());
             let s = CString::new(s).unwrap();
             let e = unsafe { cgns_sys::cg_gorel(self.file.0, s.as_ptr(), i, end) };
@@ -222,29 +222,29 @@ impl CgnsDataType for u8 {
 }
 
 impl From<Mode> for i32 {
-    fn from(m: Mode) -> i32 {
+    fn from(m: Mode) -> Self {
         match m {
-            Mode::Read => CG_MODE_READ as i32,
-            Mode::Write => CG_MODE_WRITE as i32,
-            Mode::Modify => CG_MODE_MODIFY as i32,
+            Mode::Read => CG_MODE_READ as Self,
+            Mode::Write => CG_MODE_WRITE as Self,
+            Mode::Modify => CG_MODE_MODIFY as Self,
         }
     }
 }
 
 impl From<FileType> for i32 {
-    fn from(t: FileType) -> i32 {
+    fn from(t: FileType) -> Self {
         match t {
-            FileType::NONE => CG_FILE_NONE as i32,
-            FileType::ADF => CG_FILE_ADF as i32,
-            FileType::ADF2 => CG_FILE_ADF2 as i32,
-            FileType::HDF5 => CG_FILE_HDF5 as i32,
+            FileType::NONE => CG_FILE_NONE as Self,
+            FileType::ADF => CG_FILE_ADF as Self,
+            FileType::ADF2 => CG_FILE_ADF2 as Self,
+            FileType::HDF5 => CG_FILE_HDF5 as Self,
         }
     }
 }
 
 impl From<i32> for Error {
     fn from(code: i32) -> Self {
-        Error(code)
+        Self(code)
     }
 }
 
@@ -276,7 +276,7 @@ pub struct Base(std::os::raw::c_int);
 impl From<i32> for Base {
     fn from(value: i32) -> Self {
         assert!(value >= 1);
-        Base(value)
+        Self(value)
     }
 }
 #[derive(Copy, Clone)]
@@ -284,7 +284,7 @@ pub struct Zone(std::os::raw::c_int);
 impl From<i32> for Zone {
     fn from(value: i32) -> Self {
         assert!(value >= 1);
-        Zone(value)
+        Self(value)
     }
 }
 
@@ -368,7 +368,7 @@ impl File {
 
     pub fn goto(&self, base: Base, query: &[GotoQueryItem]) -> Result<GotoContext> {
         let _mutex = CGNS_MUTEX.lock().unwrap();
-        let end = "end\0".as_bytes().as_ptr();
+        let end = b"end\0".as_ptr();
         let e = unsafe { cgns_sys::cg_goto(self.0, base.0, end) };
         if e == 0 {
             // varargs is not yet available in stable Rust so we rely on cg_gorel
@@ -597,7 +597,7 @@ impl File {
         args: &SectionInfo,
         elements: &[cgsize_t],
         offsets: &[cgsize_t],
-    ) -> Result<()>{
+    ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let section_name = CString::new(args.section_name.clone()).unwrap();
         let mut c = 0;

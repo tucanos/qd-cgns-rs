@@ -15,15 +15,17 @@ impl<'a> GotoContext<'a> {
 
     /// High level alternative to `array_read`
     pub fn read_char_array(&self, name: &str) -> Result<Option<(Vec<u8>, Vec<i32>)>> {
-        let Some((id, typ, dims)) = self.array_info_from_name(name)? else {
-            return Ok(None);
+        let r = if let Some((id, typ, dims)) = self.array_info_from_name(name)? {
+            assert_eq!(typ, DataType_t::Character);
+            let flatsize: i32 = dims.iter().product();
+            let flatsize = usize::try_from(flatsize).unwrap();
+            let mut raw_data = vec![0_u8; flatsize];
+            self.array_read(id, &mut raw_data)?;
+            Some((raw_data, dims))
+        } else {
+            None
         };
-        assert_eq!(typ, DataType_t::Character);
-        let flatsize: i32 = dims.iter().product();
-        let flatsize = usize::try_from(flatsize).unwrap();
-        let mut raw_data = vec![0_u8; flatsize];
-        self.array_read(id, &mut raw_data)?;
-        Ok(Some((raw_data, dims)))
+        Ok(r)
     }
 
     /// High level alternative to `array_read`

@@ -7,6 +7,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 #[allow(clippy::derivable_impls)]
 impl Default for ElementType_t {
     fn default() -> Self {
-        ElementType_t::ElementTypeNull
+        Self::ElementTypeNull
     }
 }
