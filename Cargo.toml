@@ -2,6 +2,7 @@
 name = "qd-cgns-rs"
 version = "0.1.0"
 edition = "2021"
+links = "cgns"
 
 [build-dependencies]
 bindgen = "0.66.1"

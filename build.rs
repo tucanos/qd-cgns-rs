@@ -24,10 +24,25 @@ fn replace_string<P: AsRef<Path>>(filename: P, oldre: &Regex, newstr: &str) -> S
 fn main() {
     println!("cargo:rustc-link-lib=cgns");
     println!("cargo:rerun-if-env-changed=CGNS_INLCUDE_DIR");
-    let include_dir = PathBuf::from(match env::var("CGNS_INLCUDE_DIR") {
-        Ok(x) => x,
-        Err(_) => "/usr/include".to_owned(),
-    });
+    println!("cargo:rerun-if-env-changed=CGNS_DIR");
+    let include_dir = env::var("CGNS_DIR").map_or_else(
+        |_| {
+            env::var("CGNS_INLCUDE_DIR")
+                .map_or_else(|_| PathBuf::from("/usr/include"), PathBuf::from)
+        },
+        |prefix| {
+            let prefix = PathBuf::from(prefix);
+            let lib_dir = prefix.join("lib");
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
+            println!("cargo:rustc-link-search=native={}", lib_dir.display());
+            // non standard key
+            // see https://doc.rust-lang.org/cargo/reference/build-script-examples.html#linking-to-system-libraries
+            // and https://github.com/rust-lang/cargo/issues/5077
+            println!("cargo:rpath={}", lib_dir.display());
+            prefix.join("include")
+        },
+    );
     let type_path = include_dir.join("cgnstypes.h");
     let main_path = include_dir.join("cgnslib.h");
     println!("cargo:rerun-if-changed={}", type_path.display());
