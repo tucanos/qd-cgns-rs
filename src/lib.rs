@@ -648,6 +648,50 @@ impl File {
         }
     }
 
+    pub fn element_data_size(&self, base: Base, zone: Zone, section: i32) -> Result<usize> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let mut r = 0;
+        let e = unsafe { cgns_sys::cg_ElementDataSize(self.0, base.0, zone.0, section, &mut r) };
+        if e == 0 {
+            Ok(r as usize)
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn poly_elements_read(
+        &self,
+        base: Base,
+        zone: Zone,
+        section: i32,
+        elements: &mut [i32],
+        connect_offset: &mut [i32],
+        parent_data: &mut [i32],
+    ) -> Result<()> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let ptr = if parent_data.is_empty() {
+            std::ptr::null_mut()
+        } else {
+            parent_data.as_mut_ptr()
+        };
+        let e = unsafe {
+            cgns_sys::cg_poly_elements_read(
+                self.0,
+                base.0,
+                zone.0,
+                section,
+                elements.as_mut_ptr(),
+                connect_offset.as_mut_ptr(),
+                ptr,
+            )
+        };
+        if e == 0 {
+            Ok(())
+        } else {
+            Err(e.into())
+        }
+    }
+
     pub fn nzones(&self, base: Base) -> Result<i32> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
