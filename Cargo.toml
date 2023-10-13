@@ -5,5 +5,5 @@ edition = "2021"
 links = "cgns"
 
 [build-dependencies]
-bindgen = "0.66.1"
-regex = "1.9.3"
+bindgen = "0.68.1"
+regex = "1.10.0"
