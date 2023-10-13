@@ -1,5 +1,6 @@
 extern crate bindgen;
 
+use bindgen::callbacks::ParseCallbacks;
 use regex::Regex;
 use std::env;
 use std::fs::File;
@@ -7,6 +8,18 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
+
+#[derive(Debug)]
+struct DeriveEnumPrimitive;
+impl ParseCallbacks for DeriveEnumPrimitive {
+    fn add_derives(&self, info: &bindgen::callbacks::DeriveInfo<'_>) -> Vec<String> {
+        if info.name == "ElementType_t" {
+            vec!["TryFromPrimitive".to_string(), "IntoPrimitive".to_string()]
+        } else {
+            Vec::default()
+        }
+    }
+}
 
 fn replace_string<P: AsRef<Path>>(filename: P, oldre: &Regex, newstr: &str) -> String {
     let file = File::open(filename).expect("Unable to open file");
@@ -64,6 +77,8 @@ fn main() {
         .default_enum_style(bindgen::EnumVariation::Rust {
             non_exhaustive: false,
         })
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(DeriveEnumPrimitive))
         .generate()
         .expect("generate bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
