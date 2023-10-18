@@ -18,6 +18,7 @@ use cgns_sys::{
 };
 
 pub use cgns_sys::{cgsize_t, ElementType_t};
+pub use num_enum::{IntoPrimitive, TryFromPrimitive};
 pub struct Error(i32);
 type Result<T> = std::result::Result<T, Error>;
 
