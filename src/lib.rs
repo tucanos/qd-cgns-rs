@@ -8,6 +8,7 @@ mod cgns_sys;
 pub mod tools;
 pub use cgns_sys::DataType_t;
 use cgns_sys::DataType_t::RealDouble;
+pub use cgns_sys::GridLocation_t as GridLocation;
 use cgns_sys::ZoneType_t::Unstructured;
 use cgns_sys::{
     cg_array_write, cg_base_write, cg_biter_read, cg_biter_write, cg_close, cg_coord_info,
@@ -284,6 +285,15 @@ impl From<i32> for Base {
 #[derive(Copy, Clone)]
 pub struct Zone(std::os::raw::c_int);
 impl From<i32> for Zone {
+    fn from(value: i32) -> Self {
+        assert!(value >= 1);
+        Self(value)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct FlowSolution(std::os::raw::c_int);
+impl From<i32> for FlowSolution {
     fn from(value: i32) -> Self {
         assert!(value >= 1);
         Self(value)
@@ -746,6 +756,63 @@ impl File {
             info.start = start as usize;
             info.end = end as usize;
             Ok((info, parent_flag != 0))
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn sol_write(
+        &mut self,
+        base: Base,
+        zone: Zone,
+        sol_name: &str,
+        grid_location: GridLocation,
+    ) -> Result<FlowSolution> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let sol_name = CString::new(sol_name).unwrap();
+        let mut sol = 0;
+        let e = unsafe {
+            cgns_sys::cg_sol_write(
+                self.0,
+                base.0,
+                zone.0,
+                sol_name.as_ptr(),
+                grid_location,
+                &mut sol,
+            )
+        };
+        if e == 0 {
+            Ok(FlowSolution(sol))
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn field_write<T: CgnsDataType>(
+        &self,
+        base: Base,
+        zone: Zone,
+        sol: FlowSolution,
+        field_name: &str,
+        data: &[T],
+    ) -> Result<i32> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let field_name = CString::new(field_name).unwrap();
+        let mut r = 0;
+        let e = unsafe {
+            cgns_sys::cg_field_write(
+                self.0,
+                base.0,
+                zone.0,
+                sol.0,
+                T::SYS,
+                field_name.as_ptr(),
+                data.as_ptr().cast(),
+                &mut r,
+            )
+        };
+        if e == 0 {
+            Ok(r)
         } else {
             Err(e.into())
         }
