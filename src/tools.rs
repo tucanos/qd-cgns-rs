@@ -49,6 +49,23 @@ impl<'a> GotoContext<'a> {
             .collect();
         Ok(Some((r, asize.to_vec())))
     }
+
+    pub fn write_string_array<S, I>(&self, name: S, values: I) -> Result<()>
+    where
+        S: AsRef<str>,
+        I: ExactSizeIterator<Item = Option<S>>,
+    {
+        let nv = values.len();
+        let mut buff: Vec<u8> = Vec::with_capacity(32 * nv);
+        for v in values {
+            let s = v.as_ref().map_or("Null", |v| v.as_ref());
+            let n = s.len();
+            assert!(n <= 32);
+            buff.extend_from_slice(s.as_bytes());
+            buff.extend((0..(32 - n)).map(|_| 0_u8));
+        }
+        self.array_write(name.as_ref(), &[32, i32::try_from(nv).unwrap()], &buff)
+    }
 }
 
 impl File {

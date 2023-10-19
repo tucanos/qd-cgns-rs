@@ -224,6 +224,10 @@ impl CgnsDataType for u8 {
     const SYS: DataType_t = DataType_t::Character;
 }
 
+impl CgnsDataType for f64 {
+    const SYS: DataType_t = DataType_t::RealDouble;
+}
+
 impl From<Mode> for i32 {
     fn from(m: Mode) -> Self {
         match m {
@@ -282,7 +286,7 @@ impl From<i32> for Base {
         Self(value)
     }
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Zone(std::os::raw::c_int);
 impl From<i32> for Zone {
     fn from(value: i32) -> Self {
