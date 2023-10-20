@@ -1,13 +1,12 @@
-use core::ffi::CStr;
 use std::array;
-use std::ffi::{c_void, CString};
+use std::ffi::{c_void, CStr, CString, c_int};
 use std::fmt::Debug;
+use std::ptr::null_mut;
 use std::sync::{Mutex, MutexGuard};
 
 mod cgns_sys;
 pub mod tools;
 pub use cgns_sys::DataType_t as DataType;
-use DataType::RealDouble;
 pub use cgns_sys::GridLocation_t as GridLocation;
 use cgns_sys::ZoneType_t::Unstructured;
 use cgns_sys::{
@@ -17,9 +16,12 @@ use cgns_sys::{
     cg_zone_write, CG_FILE_ADF, CG_FILE_ADF2, CG_FILE_HDF5, CG_FILE_NONE, CG_MODE_MODIFY,
     CG_MODE_READ, CG_MODE_WRITE,
 };
+use DataType::RealDouble;
 
-pub use cgns_sys::cgsize_t as cgsize;
-pub use cgns_sys::ElementType_t as ElementType;
+pub use cgns_sys::{
+    cgsize_t as cgsize, BCType_t as BCType, ElementType_t as ElementType,
+    PointSetType_t as PointSetType,
+};
 use num_enum::TryFromPrimitive;
 use num_enum::TryFromPrimitiveError;
 pub struct Error(i32);
@@ -323,6 +325,30 @@ fn raw_to_string(buf: &[u8]) -> String {
         .to_string()
 }
 
+impl Default for ElementType {
+    fn default() -> Self {
+        Self::try_from_primitive(0).unwrap()
+    }
+}
+
+impl Default for BCType {
+    fn default() -> Self {
+        Self::try_from_primitive(0).unwrap()
+    }
+}
+
+impl Default for PointSetType {
+    fn default() -> Self {
+        Self::try_from_primitive(0).unwrap()
+    }
+}
+
+impl Default for DataType {
+    fn default() -> Self {
+        Self::try_from_primitive(0).unwrap()
+    }
+}
+
 #[derive(Default)]
 pub struct SectionInfo {
     pub section_name: String,
@@ -343,6 +369,18 @@ impl SectionInfo {
             nbndry: 0,
         }
     }
+}
+
+#[derive(Default)]
+pub struct BoCoInfo {
+    pub name: String,
+    pub r#type: BCType,
+    pub ptset_type: PointSetType,
+    pub npnts: usize,
+    pub normal_index: usize,
+    pub normal_list_size: usize,
+    pub normal_data_type: DataType,
+    pub ndataset: usize,
 }
 
 impl File {
@@ -829,6 +867,65 @@ impl File {
             Ok(r)
         } else {
             Err(e.into())
+        }
+    }
+
+    pub fn nbocos(&self, base: Base, zone: Zone) -> Result<u32> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let mut r = 0;
+        let e = unsafe { cgns_sys::cg_nbocos(self.0, base.0, zone.0, &mut r) };
+        if e == 0 {
+            Ok(r as u32)
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn boco_info(&self, base: Base, zone: Zone, bc: u32) -> Result<BoCoInfo> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let mut raw_name = [0_u8; 256];
+        let mut r = BoCoInfo::default();
+        let mut npnts = 0;
+        let mut normal_index = 0;
+        let mut normal_list_size = 0;
+        let mut ndataset = 0;
+        let err = unsafe {
+            cgns_sys::cg_boco_info(
+                self.0,
+                base.0,
+                zone.0,
+                bc as c_int,
+                raw_name.as_mut_ptr().cast(),
+                &mut r.r#type,
+                &mut r.ptset_type,
+                &mut npnts,
+                &mut normal_index,
+                &mut normal_list_size,
+                &mut r.normal_data_type,
+                &mut ndataset,
+            )
+        };
+        r.npnts = usize::try_from(npnts).unwrap();
+        r.normal_index = usize::try_from(normal_index).unwrap();
+        r.normal_list_size = usize::try_from(normal_list_size).unwrap();
+        r.ndataset = usize::try_from(ndataset).unwrap();
+        r.name = raw_to_string(&raw_name);
+        if err == 0 {
+            Ok(r)
+        } else {
+            Err(err.into())
+        }
+    }
+
+    pub fn boco_read(&self, base: Base, zone: Zone, bc: u32, pnts: &mut [i32]) -> Result<()> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let err = unsafe {
+            cgns_sys::cg_boco_read(self.0, base.0, zone.0, bc as c_int, pnts.as_mut_ptr(), null_mut())
+        };
+        if err == 0 {
+            Ok(())
+        } else {
+            Err(err.into())
         }
     }
 }

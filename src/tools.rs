@@ -1,4 +1,4 @@
-use crate::{cgns_sys, Base, DataType, File, GotoContext, Result};
+use crate::{cgns_sys, Base, DataType, File, GotoContext, Result, Zone, PointSetType};
 use std::{ffi::CStr, iter};
 
 impl<'a> GotoContext<'a> {
@@ -124,5 +124,24 @@ impl File {
         let gc = self.goto(base, &[("BaseIterativeData_t", 1).into()])?;
         gc.array_write("NumberOfZones", &[num_iter], &nz)?;
         gc.array_write("ZonePointers", &[32, num_zone_by_iter, num_iter], &raw_data)
+    }
+
+    /// Read a boundary condition as a list
+    pub fn boco_read_as_vec(&self, base: Base, zone: Zone, bc: u32) -> Result<Vec<i32>> {
+        let info = self.boco_info(base, zone, bc)?;
+        match info.ptset_type {
+            PointSetType::ElementRange | PointSetType::PointRange => {
+                let mut range = [0; 2];
+                self.boco_read(base, zone, bc, &mut range)?;
+                let n = range[1] - range[0] + 1;
+                Ok((0..n).map(|i| range[0] - 1 + i).collect())
+            },
+            PointSetType::ElementList | PointSetType::PointList => {
+                let mut pnts = vec![0; info.npnts];
+                self.boco_read(base, zone, bc, &mut pnts)?;
+                Ok(pnts)
+            },
+            x => unimplemented!("Boundary conditions of type {x:?} are not supported"),
+        }
     }
 }

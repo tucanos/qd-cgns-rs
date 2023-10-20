@@ -1,6 +1,7 @@
 extern crate bindgen;
 
 use bindgen::callbacks::ParseCallbacks;
+use bindgen::callbacks::TypeKind;
 use regex::Regex;
 use std::env;
 use std::fs::File;
@@ -13,7 +14,7 @@ use std::path::PathBuf;
 struct DeriveEnumPrimitive;
 impl ParseCallbacks for DeriveEnumPrimitive {
     fn add_derives(&self, info: &bindgen::callbacks::DeriveInfo<'_>) -> Vec<String> {
-        if info.name == "ElementType_t" {
+        if info.kind == TypeKind::Enum {
             vec!["TryFromPrimitive".to_string(), "IntoPrimitive".to_string()]
         } else {
             Vec::default()
@@ -79,6 +80,12 @@ fn main() {
         })
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         .parse_callbacks(Box::new(DeriveEnumPrimitive))
+        .derive_default(true)
+        .derive_debug(true)
+        .derive_copy(true)
+        .derive_eq(true)
+        .derive_hash(true)
+        .derive_ord(true)
         .generate()
         .expect("generate bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
