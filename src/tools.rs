@@ -1,8 +1,8 @@
-use crate::{cgns_sys, Base, DataType_t, File, GotoContext, Result};
+use crate::{cgns_sys, Base, DataType, File, GotoContext, Result};
 use std::{ffi::CStr, iter};
 
 impl<'a> GotoContext<'a> {
-    pub fn array_info_from_name(&self, name: &str) -> Result<Option<(i32, DataType_t, Vec<i32>)>> {
+    pub fn array_info_from_name(&self, name: &str) -> Result<Option<(i32, DataType, Vec<i32>)>> {
         let na = self.narrays()?;
         for i in 1..=na {
             let (aname, typ, dims) = self.array_info(i)?;
@@ -16,7 +16,7 @@ impl<'a> GotoContext<'a> {
     /// High level alternative to `array_read`
     pub fn read_char_array(&self, name: &str) -> Result<Option<(Vec<u8>, Vec<i32>)>> {
         let r = if let Some((id, typ, dims)) = self.array_info_from_name(name)? {
-            assert_eq!(typ, DataType_t::Character);
+            assert_eq!(typ, DataType::Character);
             let flatsize: i32 = dims.iter().product();
             let flatsize = usize::try_from(flatsize).unwrap();
             let mut raw_data = vec![0_u8; flatsize];

@@ -6,8 +6,8 @@ use std::sync::{Mutex, MutexGuard};
 
 mod cgns_sys;
 pub mod tools;
-pub use cgns_sys::DataType_t;
-use cgns_sys::DataType_t::RealDouble;
+pub use cgns_sys::DataType_t as DataType;
+use DataType::RealDouble;
 pub use cgns_sys::GridLocation_t as GridLocation;
 use cgns_sys::ZoneType_t::Unstructured;
 use cgns_sys::{
@@ -18,10 +18,20 @@ use cgns_sys::{
     CG_MODE_READ, CG_MODE_WRITE,
 };
 
-pub use cgns_sys::{cgsize_t, ElementType_t};
-pub use num_enum::{IntoPrimitive, TryFromPrimitive};
+pub use cgns_sys::cgsize_t as cgsize;
+pub use cgns_sys::ElementType_t as ElementType;
+use num_enum::TryFromPrimitive;
+use num_enum::TryFromPrimitiveError;
 pub struct Error(i32);
 type Result<T> = std::result::Result<T, Error>;
+
+impl TryFrom<u8> for ElementType {
+    type Error = TryFromPrimitiveError<Self>;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        Self::try_from_primitive(u32::from(value))
+    }
+}
 
 pub enum Mode {
     Read,
@@ -75,7 +85,7 @@ impl From<(&str, i32)> for GotoQueryItem {
 }
 
 pub trait CgnsDataType {
-    const SYS: DataType_t;
+    const SYS: DataType;
 }
 
 pub struct GotoContext<'a> {
@@ -124,11 +134,11 @@ impl<'a> GotoContext<'a> {
         }
     }
 
-    pub fn array_info(&self, array_id: i32) -> Result<(String, DataType_t, Vec<i32>)> {
+    pub fn array_info(&self, array_id: i32) -> Result<(String, DataType, Vec<i32>)> {
         let mut raw_name = [0_u8; 64];
         let mut dimensions = [0; 12];
         let mut rank = 0;
-        let mut datatype = DataType_t::DataTypeNull;
+        let mut datatype = DataType::DataTypeNull;
         let e = unsafe {
             cgns_sys::cg_array_info(
                 array_id,
@@ -217,15 +227,15 @@ impl<'a> GotoContext<'a> {
 }
 
 impl CgnsDataType for i32 {
-    const SYS: DataType_t = DataType_t::Integer;
+    const SYS: DataType = DataType::Integer;
 }
 
 impl CgnsDataType for u8 {
-    const SYS: DataType_t = DataType_t::Character;
+    const SYS: DataType = DataType::Character;
 }
 
 impl CgnsDataType for f64 {
-    const SYS: DataType_t = DataType_t::RealDouble;
+    const SYS: DataType = DataType::RealDouble;
 }
 
 impl From<Mode> for i32 {
@@ -316,7 +326,7 @@ fn raw_to_string(buf: &[u8]) -> String {
 #[derive(Default)]
 pub struct SectionInfo {
     pub section_name: String,
-    pub typ: ElementType_t,
+    pub typ: ElementType,
     pub start: usize,
     pub end: usize,
     pub nbndry: i32,
@@ -324,7 +334,7 @@ pub struct SectionInfo {
 
 impl SectionInfo {
     #[must_use]
-    pub fn new(typ: ElementType_t, end: usize) -> Self {
+    pub fn new(typ: ElementType, end: usize) -> Self {
         Self {
             section_name: "Elem".to_owned(),
             typ,
@@ -452,9 +462,9 @@ impl File {
         let zonename = CString::new(zonename).unwrap();
         let mut z: i32 = 0;
         let size = [
-            vertex_size as cgsize_t,
-            cell_size as cgsize_t,
-            boundary_size as cgsize_t,
+            vertex_size as cgsize,
+            cell_size as cgsize,
+            boundary_size as cgsize,
         ];
         let e = unsafe {
             cg_zone_write(
@@ -504,7 +514,7 @@ impl File {
 
     pub fn zone_read(&self, base: Base, zone: Zone) -> Result<(String, [usize; 9])> {
         let _l = CGNS_MUTEX.lock().unwrap();
-        let mut r = [0 as cgsize_t; 9];
+        let mut r = [0 as cgsize; 9];
         let mut buf = [0_u8; 64];
         let err = unsafe {
             cg_zone_read(
@@ -522,9 +532,9 @@ impl File {
         }
     }
 
-    pub fn coord_info(&self, base: Base, zone: Zone, c: i32) -> Result<(DataType_t, String)> {
+    pub fn coord_info(&self, base: Base, zone: Zone, c: i32) -> Result<(DataType, String)> {
         let _l = CGNS_MUTEX.lock().unwrap();
-        let mut datatype = DataType_t::Integer;
+        let mut datatype = DataType::Integer;
         let mut raw_name = [0_u8; 64];
         let err = unsafe {
             cg_coord_info(
@@ -553,8 +563,8 @@ impl File {
         coord_array: &mut [f64],
     ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
-        let range_min = range_min as cgsize_t;
-        let range_max = range_max as cgsize_t;
+        let range_min = range_min as cgsize;
+        let range_max = range_max as cgsize;
         let p = CString::new(coordname).unwrap();
         let err = unsafe {
             cg_coord_read(
@@ -580,7 +590,7 @@ impl File {
         base: Base,
         zone: Zone,
         args: &SectionInfo,
-        elements: &[cgsize_t],
+        elements: &[cgsize],
     ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let section_name = CString::new(args.section_name.clone()).unwrap();
@@ -592,8 +602,8 @@ impl File {
                 zone.0,
                 section_name.as_ptr(),
                 args.typ,
-                args.start as cgsize_t,
-                args.end as cgsize_t,
+                args.start as cgsize,
+                args.end as cgsize,
                 args.nbndry,
                 elements.as_ptr(),
                 &mut c,
@@ -611,8 +621,8 @@ impl File {
         base: Base,
         zone: Zone,
         args: &SectionInfo,
-        elements: &[cgsize_t],
-        offsets: &[cgsize_t],
+        elements: &[cgsize],
+        offsets: &[cgsize],
     ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let section_name = CString::new(args.section_name.clone()).unwrap();
@@ -624,8 +634,8 @@ impl File {
                 zone.0,
                 section_name.as_ptr(),
                 args.typ,
-                args.start as cgsize_t,
-                args.end as cgsize_t,
+                args.start as cgsize,
+                args.end as cgsize,
                 args.nbndry,
                 elements.as_ptr(),
                 offsets.as_ptr(),
@@ -739,8 +749,8 @@ impl File {
         let mut info = SectionInfo::default();
         let mut parent_flag = 0_i32;
         let mut raw_name = [0_u8; 64];
-        let mut start: cgsize_t = 0;
-        let mut end: cgsize_t = 0;
+        let mut start: cgsize = 0;
+        let mut end: cgsize = 0;
         let e = unsafe {
             cg_section_read(
                 self.0,
