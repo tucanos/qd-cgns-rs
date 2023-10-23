@@ -127,7 +127,7 @@ impl File {
     }
 
     /// Read a boundary condition as a list
-    pub fn boco_read_as_vec(&self, base: Base, zone: Zone, bc: i32) -> Result<Vec<i32>> {
+    pub fn boco_read_as_vec(&self, base: Base, zone: Zone, bc: u32) -> Result<Vec<i32>> {
         let info = self.boco_info(base, zone, bc)?;
         match info.ptset_type {
             PointSetType::ElementRange | PointSetType::PointRange => {
