@@ -9,4 +9,4 @@ num_enum = "0.7.0"
 
 [build-dependencies]
 bindgen = "0.68.1"
-regex = "1.10.0"
+regex = "1.10.2"
