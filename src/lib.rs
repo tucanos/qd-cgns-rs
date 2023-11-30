@@ -102,14 +102,15 @@ impl<'a> GotoContext<'a> {
     pub fn array_write<T: CgnsDataType>(
         &self,
         arrayname: &str,
-        dimensions: &[i32],
+        dimensions: &[usize],
         data: &[T],
     ) -> Result<()> {
         let arrayname = CString::new(arrayname).unwrap();
         assert_eq!(
             dimensions.iter().copied().reduce(|a, v| a * v).unwrap(),
-            i32::try_from(data.len()).unwrap()
+            data.len()
         );
+        let dimensions: Vec<_> = dimensions.iter().map(|&x| cgsize::try_from(x).unwrap()).collect();
         let e = unsafe {
             cg_array_write(
                 arrayname.as_ptr(),
@@ -136,7 +137,7 @@ impl<'a> GotoContext<'a> {
         }
     }
 
-    pub fn array_info(&self, array_id: i32) -> Result<(String, DataType, Vec<i32>)> {
+    pub fn array_info(&self, array_id: i32) -> Result<(String, DataType, Vec<usize>)> {
         let mut raw_name = [0_u8; 64];
         let mut dimensions = [0; 12];
         let mut rank = 0;
@@ -155,7 +156,7 @@ impl<'a> GotoContext<'a> {
             Ok((
                 raw_to_string(&raw_name),
                 datatype,
-                dimensions[0..rank].to_vec(),
+                dimensions[0..rank].iter().map(|&x| usize::try_from(x).unwrap()).collect(),
             ))
         } else {
             Err(e.into())
@@ -692,8 +693,8 @@ impl File {
         base: Base,
         zone: Zone,
         section: i32,
-        elements: &mut [i32],
-        parent_data: &mut [i32],
+        elements: &mut [cgsize],
+        parent_data: &mut [cgsize],
     ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let ptr = if parent_data.is_empty() {
@@ -727,9 +728,9 @@ impl File {
         base: Base,
         zone: Zone,
         section: i32,
-        elements: &mut [i32],
-        connect_offset: &mut [i32],
-        parent_data: &mut [i32],
+        elements: &mut [cgsize],
+        connect_offset: &mut [cgsize],
+        parent_data: &mut [cgsize],
     ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let ptr = if parent_data.is_empty() {
@@ -917,7 +918,7 @@ impl File {
         }
     }
 
-    pub fn boco_read(&self, base: Base, zone: Zone, bc: u32, pnts: &mut [i32]) -> Result<()> {
+    pub fn boco_read(&self, base: Base, zone: Zone, bc: u32, pnts: &mut [cgsize]) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let err = unsafe {
             cgns_sys::cg_boco_read(self.0, base.0, zone.0, bc as c_int, pnts.as_mut_ptr(), null_mut())

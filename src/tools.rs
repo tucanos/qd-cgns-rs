@@ -1,8 +1,8 @@
-use crate::{cgns_sys, Base, DataType, File, GotoContext, Result, Zone, PointSetType};
+use crate::{cgns_sys, Base, DataType, File, GotoContext, PointSetType, Result, Zone, cgsize};
 use std::{ffi::CStr, iter};
 
 impl<'a> GotoContext<'a> {
-    pub fn array_info_from_name(&self, name: &str) -> Result<Option<(i32, DataType, Vec<i32>)>> {
+    pub fn array_info_from_name(&self, name: &str) -> Result<Option<(i32, DataType, Vec<usize>)>> {
         let na = self.narrays()?;
         for i in 1..=na {
             let (aname, typ, dims) = self.array_info(i)?;
@@ -14,10 +14,10 @@ impl<'a> GotoContext<'a> {
     }
 
     /// High level alternative to `array_read`
-    pub fn read_char_array(&self, name: &str) -> Result<Option<(Vec<u8>, Vec<i32>)>> {
+    pub fn read_char_array(&self, name: &str) -> Result<Option<(Vec<u8>, Vec<usize>)>> {
         let r = if let Some((id, typ, dims)) = self.array_info_from_name(name)? {
             assert_eq!(typ, DataType::Character);
-            let flatsize: i32 = dims.iter().product();
+            let flatsize: usize = dims.iter().product();
             let flatsize = usize::try_from(flatsize).unwrap();
             let mut raw_data = vec![0_u8; flatsize];
             self.array_read(id, &mut raw_data)?;
@@ -29,7 +29,7 @@ impl<'a> GotoContext<'a> {
     }
 
     /// High level alternative to `array_read`
-    pub fn read_string_array(&self, name: &str) -> Result<Option<(Vec<String>, Vec<i32>)>> {
+    pub fn read_string_array(&self, name: &str) -> Result<Option<(Vec<String>, Vec<usize>)>> {
         let Some((raw_data, dims)) = self.read_char_array(name)? else {
             return Ok(None);
         };
@@ -64,7 +64,7 @@ impl<'a> GotoContext<'a> {
             buff.extend_from_slice(s.as_bytes());
             buff.extend((0..(32 - n)).map(|_| 0_u8));
         }
-        self.array_write(name.as_ref(), &[32, i32::try_from(nv).unwrap()], &buff)
+        self.array_write(name.as_ref(), &[32, usize::try_from(nv).unwrap()], &buff)
     }
 }
 
@@ -104,7 +104,7 @@ impl File {
             .iter()
             .map(|x| i32::try_from(x.len()).unwrap())
             .collect();
-        let num_iter = i32::try_from(data.len()).unwrap();
+        let num_iter = data.len();
         let num_zone_by_iter = data.iter().map(Vec::len).max().unwrap();
         let null_str = "Null".to_string();
         let raw_data: Vec<_> = data
@@ -120,14 +120,13 @@ impl File {
                     .collect()
             })
             .collect();
-        let num_zone_by_iter = i32::try_from(num_zone_by_iter).unwrap();
         let gc = self.goto(base, &[("BaseIterativeData_t", 1).into()])?;
         gc.array_write("NumberOfZones", &[num_iter], &nz)?;
         gc.array_write("ZonePointers", &[32, num_zone_by_iter, num_iter], &raw_data)
     }
 
     /// Read a boundary condition as a list
-    pub fn boco_read_as_vec(&self, base: Base, zone: Zone, bc: u32) -> Result<Vec<i32>> {
+    pub fn boco_read_as_vec(&self, base: Base, zone: Zone, bc: u32) -> Result<Vec<cgsize>> {
         let info = self.boco_info(base, zone, bc)?;
         match info.ptset_type {
             PointSetType::ElementRange | PointSetType::PointRange => {
