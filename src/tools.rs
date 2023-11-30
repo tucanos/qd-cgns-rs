@@ -1,4 +1,4 @@
-use crate::{cgns_sys, Base, DataType, File, GotoContext, PointSetType, Result, Zone, cgsize};
+use crate::{cgns_sys, cgsize, Base, DataType, File, GotoContext, PointSetType, Result, Zone};
 use std::{ffi::CStr, iter};
 
 impl<'a> GotoContext<'a> {
@@ -134,12 +134,12 @@ impl File {
                 self.boco_read(base, zone, bc, &mut range)?;
                 let n = range[1] - range[0] + 1;
                 Ok((0..n).map(|i| range[0] - 1 + i).collect())
-            },
+            }
             PointSetType::ElementList | PointSetType::PointList => {
                 let mut pnts = vec![0; info.npnts];
                 self.boco_read(base, zone, bc, &mut pnts)?;
                 Ok(pnts)
-            },
+            }
             x => unimplemented!("Boundary conditions of type {x:?} are not supported"),
         }
     }

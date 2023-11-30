@@ -1,5 +1,5 @@
 use std::array;
-use std::ffi::{c_void, CStr, CString, c_int};
+use std::ffi::{c_int, c_void, CStr, CString};
 use std::fmt::Debug;
 use std::ptr::null_mut;
 use std::sync::{Mutex, MutexGuard};
@@ -110,7 +110,10 @@ impl<'a> GotoContext<'a> {
             dimensions.iter().copied().reduce(|a, v| a * v).unwrap(),
             data.len()
         );
-        let dimensions: Vec<_> = dimensions.iter().map(|&x| cgsize::try_from(x).unwrap()).collect();
+        let dimensions: Vec<_> = dimensions
+            .iter()
+            .map(|&x| cgsize::try_from(x).unwrap())
+            .collect();
         let e = unsafe {
             cg_array_write(
                 arrayname.as_ptr(),
@@ -156,7 +159,10 @@ impl<'a> GotoContext<'a> {
             Ok((
                 raw_to_string(&raw_name),
                 datatype,
-                dimensions[0..rank].iter().map(|&x| usize::try_from(x).unwrap()).collect(),
+                dimensions[0..rank]
+                    .iter()
+                    .map(|&x| usize::try_from(x).unwrap())
+                    .collect(),
             ))
         } else {
             Err(e.into())
@@ -921,7 +927,14 @@ impl File {
     pub fn boco_read(&self, base: Base, zone: Zone, bc: u32, pnts: &mut [cgsize]) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let err = unsafe {
-            cgns_sys::cg_boco_read(self.0, base.0, zone.0, bc as c_int, pnts.as_mut_ptr(), null_mut())
+            cgns_sys::cg_boco_read(
+                self.0,
+                base.0,
+                zone.0,
+                bc as c_int,
+                pnts.as_mut_ptr(),
+                null_mut(),
+            )
         };
         if err == 0 {
             Ok(())
