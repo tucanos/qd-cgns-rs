@@ -1,3 +1,6 @@
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::ptr_cast_constness)]
+#![allow(clippy::as_ptr_cast_mut)]
 use std::array;
 use std::ffi::{c_int, c_void, CStr, CString};
 use std::fmt::Debug;

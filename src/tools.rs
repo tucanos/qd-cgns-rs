@@ -18,7 +18,6 @@ impl<'a> GotoContext<'a> {
         let r = if let Some((id, typ, dims)) = self.array_info_from_name(name)? {
             assert_eq!(typ, DataType::Character);
             let flatsize: usize = dims.iter().product();
-            let flatsize = usize::try_from(flatsize).unwrap();
             let mut raw_data = vec![0_u8; flatsize];
             self.array_read(id, &mut raw_data)?;
             Some((raw_data, dims))
@@ -36,9 +35,8 @@ impl<'a> GotoContext<'a> {
         let Some((string_size, asize)) = dims.split_first() else {
             return Ok(None);
         };
-        let string_size = usize::try_from(*string_size).unwrap();
         let r = raw_data
-            .chunks(string_size)
+            .chunks(*string_size)
             .map(|raw_string| {
                 CStr::from_bytes_until_nul(raw_string)
                     .unwrap()
@@ -64,7 +62,7 @@ impl<'a> GotoContext<'a> {
             buff.extend_from_slice(s.as_bytes());
             buff.extend((0..(32 - n)).map(|_| 0_u8));
         }
-        self.array_write(name.as_ref(), &[32, usize::try_from(nv).unwrap()], &buff)
+        self.array_write(name.as_ref(), &[32, nv], &buff)
     }
 }
 
@@ -81,9 +79,8 @@ impl File {
             return Ok(Vec::new());
         };
         drop(gc);
-        let nzonebyiter = usize::try_from(dims[0]).unwrap();
         let r = zones
-            .chunks_exact_mut(nzonebyiter)
+            .chunks_exact_mut(dims[0])
             .map(|it| {
                 it.iter_mut()
                     .filter_map(|x| {
