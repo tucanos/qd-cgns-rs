@@ -1,12 +1,12 @@
 [package]
 name = "qd-cgns-rs"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 links = "cgns"
 
 [dependencies]
-num_enum = "0.7.0"
+num_enum = "0.7.3"
 
 [build-dependencies]
-bindgen = "0.69.1"
-regex = "1.10.2"
+bindgen = "0.71.1"
+regex = "1.11.1"
