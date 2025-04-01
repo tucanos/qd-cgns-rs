@@ -101,7 +101,7 @@ pub struct GotoContext<'a> {
 
 type Where = (Base, Vec<(String, i32)>);
 
-impl<'a> GotoContext<'a> {
+impl GotoContext<'_> {
     pub fn array_write<T: CgnsDataType>(
         &self,
         arrayname: &str,
@@ -123,7 +123,7 @@ impl<'a> GotoContext<'a> {
                 T::SYS,
                 i32::try_from(dimensions.len()).unwrap(),
                 dimensions.as_ptr(),
-                data.as_ptr().cast::<std::ffi::c_void>(),
+                data.as_ptr().cast::<c_void>(),
             )
         };
         if e == 0 {
@@ -184,7 +184,7 @@ impl<'a> GotoContext<'a> {
     pub fn gorel(&self, query: &[GotoQueryItem]) -> Result<()> {
         // varargs is not yet available in stable Rust so we recurse
         if let Some((head, queue)) = query.split_first() {
-            let end = b"end\0".as_ptr();
+            let end = c"end".as_ptr();
             let (s, i) = (head.string(), head.index());
             let s = CString::new(s).unwrap();
             let e = unsafe { cgns_sys::cg_gorel(self.file.0, s.as_ptr(), i, end) };
@@ -247,7 +247,7 @@ impl CgnsDataType for u8 {
 }
 
 impl CgnsDataType for f64 {
-    const SYS: DataType = DataType::RealDouble;
+    const SYS: DataType = RealDouble;
 }
 
 impl From<Mode> for i32 {
@@ -440,9 +440,9 @@ impl File {
         }
     }
 
-    pub fn goto(&self, base: Base, query: &[GotoQueryItem]) -> Result<GotoContext> {
+    pub fn goto(&self, base: Base, query: &[GotoQueryItem]) -> Result<GotoContext<'_>> {
         let mutex = CGNS_MUTEX.lock().unwrap();
-        let end = b"end\0".as_ptr();
+        let end = c"end".as_ptr();
         let e = unsafe { cgns_sys::cg_goto(self.0, base.0, end) };
         if e == 0 {
             // varargs is not yet available in stable Rust so we rely on cg_gorel
@@ -454,7 +454,7 @@ impl File {
         }
     }
 
-    pub fn golist(&self, base: Base, labels: &[&str], index: &[i32]) -> Result<GotoContext> {
+    pub fn golist(&self, base: Base, labels: &[&str], index: &[i32]) -> Result<GotoContext<'_>> {
         let mutex = CGNS_MUTEX.lock().unwrap();
         let labels: Vec<_> = labels.iter().map(|&s| CString::new(s).unwrap()).collect();
         let mut labels_ptr: Vec<_> = labels.iter().map(|s| s.as_ptr() as *mut i8).collect();
@@ -707,7 +707,7 @@ impl File {
     ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let ptr = if parent_data.is_empty() {
-            std::ptr::null_mut()
+            null_mut()
         } else {
             parent_data.as_mut_ptr()
         };
@@ -743,7 +743,7 @@ impl File {
     ) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let ptr = if parent_data.is_empty() {
-            std::ptr::null_mut()
+            null_mut()
         } else {
             parent_data.as_mut_ptr()
         };

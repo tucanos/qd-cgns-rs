@@ -1,7 +1,7 @@
 use crate::{cgns_sys, cgsize, Base, DataType, File, GotoContext, PointSetType, Result, Zone};
 use std::{ffi::CStr, iter};
 
-impl<'a> GotoContext<'a> {
+impl GotoContext<'_> {
     pub fn array_info_from_name(&self, name: &str) -> Result<Option<(i32, DataType, Vec<usize>)>> {
         let na = self.narrays()?;
         for i in 1..=na {
@@ -96,7 +96,7 @@ impl File {
         Ok(r)
     }
 
-    pub fn zone_pointers_write(&mut self, base: Base, data: &Vec<Vec<String>>) -> Result<()> {
+    pub fn zone_pointers_write(&mut self, base: Base, data: &[Vec<String>]) -> Result<()> {
         let nz: Vec<_> = data
             .iter()
             .map(|x| i32::try_from(x.len()).unwrap())
