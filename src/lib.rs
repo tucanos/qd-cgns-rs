@@ -361,7 +361,7 @@ impl SectionInfo {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BoCoInfo {
     pub name: String,
     pub r#type: BCType,
