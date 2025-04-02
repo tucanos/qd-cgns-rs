@@ -1,4 +1,4 @@
-use crate::{cgns_sys, cgsize, Base, DataType, File, GotoContext, PointSetType, Result, Zone};
+use crate::{Base, DataType, File, GotoContext, PointSetType, Result, Zone, cgns_sys, cgsize};
 use std::{ffi::CStr, iter};
 
 impl GotoContext<'_> {
@@ -71,7 +71,7 @@ impl File {
         let gc = match self.goto(base, &[("BaseIterativeData_t", 1).into()]) {
             Ok(x) => x,
             Err(crate::Error(x)) if x == cgns_sys::CG_NODE_NOT_FOUND as i32 => {
-                return Ok(Vec::new())
+                return Ok(Vec::new());
             }
             Err(x) => return Err(x),
         };
