@@ -839,6 +839,9 @@ impl File {
         if err == 0 { Ok(r) } else { Err(err.into()) }
     }
 
+    /// Wrap `cg_boco_read`
+    ///
+    /// See <https://cgns.github.io/standard/MLL/api/c_api.html#_CPPv412cg_boco_readiiiiP8cgsize_tPv>
     pub fn boco_read(&self, base: Base, zone: Zone, bc: u32, pnts: &mut [cgsize]) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let err = unsafe {
@@ -852,6 +855,41 @@ impl File {
             )
         };
         if err == 0 { Ok(()) } else { Err(err.into()) }
+    }
+
+    /// Wrap `cg_boco_write`
+    ///
+    /// See <https://cgns.github.io/standard/MLL/api/c_api.html#_CPPv413cg_boco_writeiiiPKc8BCType_t14PointSetType_t8cgsize_tPK8cgsize_tPi>
+    pub fn boco_write(
+        &self,
+        base: Base,
+        zone: Zone,
+        boconame: &str,
+        bocotype: BCType,
+        ptset_type: PointSetType,
+        pnts: &[cgsize],
+    ) -> Result<u32> {
+        let boconame = CString::new(boconame).unwrap();
+        let mut r = 0;
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let err = unsafe {
+            cgns_sys::cg_boco_write(
+                self.0,
+                base.0,
+                zone.0,
+                boconame.as_ptr(),
+                bocotype,
+                ptset_type,
+                pnts.len().try_into().unwrap(),
+                pnts.as_ptr(),
+                &mut r,
+            )
+        };
+        if err == 0 {
+            Ok(r as u32)
+        } else {
+            Err(err.into())
+        }
     }
 }
 
