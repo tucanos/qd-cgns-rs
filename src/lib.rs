@@ -131,7 +131,7 @@ impl GotoContext<'_> {
 
     pub fn narrays(&self) -> Result<i32> {
         let mut r = 0;
-        let e = unsafe { cgns_sys::cg_narrays(&mut r) };
+        let e = unsafe { cgns_sys::cg_narrays(&raw mut r) };
         if e == 0 { Ok(r) } else { Err(e.into()) }
     }
 
@@ -144,8 +144,8 @@ impl GotoContext<'_> {
             cgns_sys::cg_array_info(
                 array_id,
                 raw_name.as_mut_ptr().cast(),
-                &mut datatype,
-                &mut rank,
+                &raw mut datatype,
+                &raw mut rank,
                 dimensions.as_mut_ptr(),
             )
         };
@@ -202,9 +202,9 @@ impl GotoContext<'_> {
         let mut labelp: [_; MAX_DEPTH] = array::from_fn(|i| label[i].as_mut_ptr());
         let e = unsafe {
             cgns_sys::cg_where(
-                &mut file,
-                &mut base,
-                &mut depth,
+                &raw mut file,
+                &raw mut base,
+                &raw mut depth,
                 labelp.as_mut_ptr().cast(),
                 index.as_mut_ptr(),
             )
@@ -274,7 +274,7 @@ pub fn open(path: &str, mode: Mode) -> Result<File> {
     let _l = CGNS_MUTEX.lock().unwrap();
     let mut fd: i32 = 0;
     let path = CString::new(path).unwrap();
-    let f = unsafe { cg_open(path.as_ptr(), mode.into(), &mut fd) };
+    let f = unsafe { cg_open(path.as_ptr(), mode.into(), &raw mut fd) };
     if f == 0 { Ok(File(fd)) } else { Err(f.into()) }
 }
 
@@ -400,7 +400,8 @@ impl File {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut n_steps = 0;
         let mut name = [0_u8; 33];
-        let e = unsafe { cg_biter_read(self.0, base.0, name.as_mut_ptr().cast(), &mut n_steps) };
+        let e =
+            unsafe { cg_biter_read(self.0, base.0, name.as_mut_ptr().cast(), &raw mut n_steps) };
         if e == 0 {
             Ok((raw_to_string(&name), n_steps))
         } else {
@@ -455,7 +456,7 @@ impl File {
         let _l = CGNS_MUTEX.lock().unwrap();
         let basename = CString::new(basename).unwrap();
         let mut b: i32 = 0;
-        let e = unsafe { cg_base_write(self.0, basename.as_ptr(), cell_dim, phys_dim, &mut b) };
+        let e = unsafe { cg_base_write(self.0, basename.as_ptr(), cell_dim, phys_dim, &raw mut b) };
         if e == 0 { Ok(Base(b)) } else { Err(e.into()) }
     }
     pub fn zone_write(
@@ -481,7 +482,7 @@ impl File {
                 zonename.as_ptr(),
                 size.as_ptr(),
                 Unstructured,
-                &mut z,
+                &raw mut z,
             )
         };
         if e == 0 { Ok(Zone(z)) } else { Err(e.into()) }
@@ -506,7 +507,7 @@ impl File {
                 RealDouble,
                 coordname.as_ptr(),
                 coord.as_ptr().cast::<c_void>(),
-                &mut c,
+                &raw mut c,
             )
         };
         if e == 0 { Ok(()) } else { Err(e.into()) }
@@ -542,7 +543,7 @@ impl File {
                 base.0,
                 zone.0,
                 c,
-                &mut datatype,
+                &raw mut datatype,
                 raw_name.as_mut_ptr().cast(),
             )
         };
@@ -573,8 +574,8 @@ impl File {
                 zone.0,
                 p.as_ptr(),
                 RealDouble,
-                &range_min,
-                &range_max,
+                &raw const range_min,
+                &raw const range_max,
                 coord_array.as_mut_ptr().cast(),
             )
         };
@@ -602,7 +603,7 @@ impl File {
                 args.end as cgsize,
                 args.nbndry,
                 elements.as_ptr(),
-                &mut c,
+                &raw mut c,
             )
         };
         if e == 0 { Ok(()) } else { Err(e.into()) }
@@ -631,7 +632,7 @@ impl File {
                 args.nbndry,
                 elements.as_ptr(),
                 offsets.as_ptr(),
-                &mut c,
+                &raw mut c,
             )
         };
         if e == 0 { Ok(()) } else { Err(e.into()) }
@@ -660,7 +661,8 @@ impl File {
     pub fn element_data_size(&self, base: Base, zone: Zone, section: i32) -> Result<usize> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
-        let e = unsafe { cgns_sys::cg_ElementDataSize(self.0, base.0, zone.0, section, &mut r) };
+        let e =
+            unsafe { cgns_sys::cg_ElementDataSize(self.0, base.0, zone.0, section, &raw mut r) };
         if e == 0 {
             Ok(r as usize)
         } else {
@@ -700,14 +702,14 @@ impl File {
     pub fn nzones(&self, base: Base) -> Result<i32> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
-        let e = unsafe { cgns_sys::cg_nzones(self.0, base.0, &mut r) };
+        let e = unsafe { cgns_sys::cg_nzones(self.0, base.0, &raw mut r) };
         if e == 0 { Ok(r) } else { Err(e.into()) }
     }
 
     pub fn nsections(&self, base: Base, zone: Zone) -> Result<i32> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
-        let e = unsafe { cg_nsections(self.0, base.0, zone.0, &mut r) };
+        let e = unsafe { cg_nsections(self.0, base.0, zone.0, &raw mut r) };
         if e == 0 { Ok(r) } else { Err(e.into()) }
     }
 
@@ -730,11 +732,11 @@ impl File {
                 zone.0,
                 section,
                 raw_name.as_mut_ptr().cast(),
-                &mut info.typ,
-                &mut start,
-                &mut end,
-                &mut info.nbndry,
-                &mut parent_flag,
+                &raw mut info.typ,
+                &raw mut start,
+                &raw mut end,
+                &raw mut info.nbndry,
+                &raw mut parent_flag,
             )
         };
         if e == 0 {
@@ -764,7 +766,7 @@ impl File {
                 zone.0,
                 sol_name.as_ptr(),
                 grid_location,
-                &mut sol,
+                &raw mut sol,
             )
         };
         if e == 0 {
@@ -794,7 +796,7 @@ impl File {
                 T::SYS,
                 field_name.as_ptr(),
                 data.as_ptr().cast(),
-                &mut r,
+                &raw mut r,
             )
         };
         if e == 0 { Ok(r) } else { Err(e.into()) }
@@ -803,7 +805,7 @@ impl File {
     pub fn nbocos(&self, base: Base, zone: Zone) -> Result<u32> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
-        let e = unsafe { cgns_sys::cg_nbocos(self.0, base.0, zone.0, &mut r) };
+        let e = unsafe { cgns_sys::cg_nbocos(self.0, base.0, zone.0, &raw mut r) };
         if e == 0 { Ok(r as u32) } else { Err(e.into()) }
     }
 
@@ -822,13 +824,13 @@ impl File {
                 zone.0,
                 bc as c_int,
                 raw_name.as_mut_ptr().cast(),
-                &mut r.r#type,
-                &mut r.ptset_type,
-                &mut npnts,
-                &mut normal_index,
-                &mut normal_list_size,
-                &mut r.normal_data_type,
-                &mut ndataset,
+                &raw mut r.r#type,
+                &raw mut r.ptset_type,
+                &raw mut npnts,
+                &raw mut normal_index,
+                &raw mut normal_list_size,
+                &raw mut r.normal_data_type,
+                &raw mut ndataset,
             )
         };
         r.npnts = usize::try_from(npnts).unwrap();
@@ -882,7 +884,7 @@ impl File {
                 ptset_type,
                 pnts.len().try_into().unwrap(),
                 pnts.as_ptr(),
-                &mut r,
+                &raw mut r,
             )
         };
         if err == 0 {

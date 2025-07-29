@@ -1,5 +1,3 @@
-extern crate bindgen;
-
 use bindgen::callbacks::ParseCallbacks;
 use bindgen::callbacks::TypeKind;
 use regex::Regex;

@@ -108,10 +108,10 @@ impl File {
             .iter()
             .flat_map(|iter| -> Vec<_> {
                 iter.iter()
-                    .chain(iter::repeat(&null_str).take(num_zone_by_iter - iter.len()))
+                    .chain(iter::repeat_n(&null_str, num_zone_by_iter - iter.len()))
                     .flat_map(|x| {
                         let mut v = x.as_bytes().to_vec();
-                        v.extend(iter::repeat(0).take(32 - x.len()));
+                        v.extend(iter::repeat_n(0, 32 - x.len()));
                         v
                     })
                     .collect()
