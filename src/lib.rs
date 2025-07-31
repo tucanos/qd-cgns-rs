@@ -1,6 +1,3 @@
-#![allow(clippy::cast_sign_loss)]
-#![allow(clippy::ptr_cast_constness)]
-#![allow(clippy::as_ptr_cast_mut)]
 use std::array;
 use std::ffi::{CStr, CString, c_int, c_void};
 use std::fmt::Debug;
@@ -279,9 +276,9 @@ pub fn open(path: &str, mode: Mode) -> Result<File> {
 }
 
 #[derive(Debug, Default)]
-pub struct File(std::os::raw::c_int);
+pub struct File(c_int);
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Base(std::os::raw::c_int);
+pub struct Base(c_int);
 impl From<i32> for Base {
     fn from(value: i32) -> Self {
         assert!(value >= 1);
@@ -289,7 +286,7 @@ impl From<i32> for Base {
     }
 }
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Zone(std::os::raw::c_int);
+pub struct Zone(c_int);
 impl From<i32> for Zone {
     fn from(value: i32) -> Self {
         assert!(value >= 1);
@@ -298,7 +295,7 @@ impl From<i32> for Zone {
 }
 
 #[derive(Copy, Clone)]
-pub struct FlowSolution(std::os::raw::c_int);
+pub struct FlowSolution(c_int);
 impl From<i32> for FlowSolution {
     fn from(value: i32) -> Self {
         assert!(value >= 1);
@@ -426,14 +423,14 @@ impl File {
     pub fn golist(&self, base: Base, labels: &[&str], index: &[i32]) -> Result<GotoContext<'_>> {
         let mutex = CGNS_MUTEX.lock().unwrap();
         let labels: Vec<_> = labels.iter().map(|&s| CString::new(s).unwrap()).collect();
-        let mut labels_ptr: Vec<_> = labels.iter().map(|s| s.as_ptr() as *mut i8).collect();
+        let mut labels_ptr: Vec<_> = labels.iter().map(|s| s.as_ptr().cast_mut()).collect();
         let e = unsafe {
             cg_golist(
                 self.0,
                 base.0,
                 labels.len() as i32,
                 labels_ptr.as_mut_ptr(),
-                index.as_ptr() as *mut i32,
+                index.as_ptr().cast_mut(),
             )
         };
         if e == 0 {
