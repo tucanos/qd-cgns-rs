@@ -278,9 +278,9 @@ pub fn open(path: &str, mode: Mode) -> Result<File> {
     if f == 0 { Ok(File(fd)) } else { Err(f.into()) }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct File(std::os::raw::c_int);
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Base(std::os::raw::c_int);
 impl From<i32> for Base {
     fn from(value: i32) -> Self {
