@@ -25,7 +25,7 @@ pub use cgns_sys::{
 use num_enum::TryFromPrimitive;
 use num_enum::TryFromPrimitiveError;
 pub struct Error(i32);
-type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl TryFrom<u8> for ElementType {
     type Error = TryFromPrimitiveError<Self>;
