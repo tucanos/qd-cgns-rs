@@ -658,6 +658,38 @@ impl File {
         if e == 0 { Ok(()) } else { Err(e.into()) }
     }
 
+    #[allow(clippy::too_many_arguments)] // imposed by CGNS API
+    pub fn elements_partial_read(
+        &self,
+        base: Base,
+        zone: Zone,
+        section: usize,
+        start: usize,
+        end: usize,
+        elements: &mut [cgsize],
+        parent_data: &mut [cgsize],
+    ) -> Result<()> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let ptr = if parent_data.is_empty() {
+            null_mut()
+        } else {
+            parent_data.as_mut_ptr()
+        };
+        let e = unsafe {
+            cgns_sys::cg_elements_partial_read(
+                self.0,
+                base.0,
+                zone.0,
+                section.try_into().unwrap(),
+                start.try_into().unwrap(),
+                end.try_into().unwrap(),
+                elements.as_mut_ptr(),
+                ptr,
+            )
+        };
+        if e == 0 { Ok(()) } else { Err(e.into()) }
+    }
+
     pub fn element_data_size(&self, base: Base, zone: Zone, section: i32) -> Result<usize> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
@@ -697,6 +729,71 @@ impl File {
             )
         };
         if e == 0 { Ok(()) } else { Err(e.into()) }
+    }
+
+    #[allow(clippy::too_many_arguments)] // imposed by CGNS API
+    pub fn poly_elements_partial_read(
+        &self,
+        base: Base,
+        zone: Zone,
+        section: usize,
+        start: usize,
+        end: usize,
+        elements: &mut [cgsize],
+        connect_offset: &mut [cgsize],
+        parent_data: &mut [cgsize],
+    ) -> Result<()> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let ptr = if parent_data.is_empty() {
+            null_mut()
+        } else {
+            parent_data.as_mut_ptr()
+        };
+        let e = unsafe {
+            cgns_sys::cg_poly_elements_partial_read(
+                self.0,
+                base.0,
+                zone.0,
+                section.try_into().unwrap(),
+                start.try_into().unwrap(),
+                end.try_into().unwrap(),
+                elements.as_mut_ptr(),
+                connect_offset.as_mut_ptr(),
+                ptr,
+            )
+        };
+        if e == 0 { Ok(()) } else { Err(e.into()) }
+    }
+
+    /// Get size of element connectivity data array for partial read
+    ///
+    /// See `cg_ElementPartialSize` in CGNS documentation
+    pub fn element_partial_size(
+        &self,
+        base: Base,
+        zone: Zone,
+        section: usize,
+        start: usize,
+        end: usize,
+    ) -> Result<usize> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let mut result = 0;
+        let e = unsafe {
+            cgns_sys::cg_ElementPartialSize(
+                self.0,
+                base.0,
+                zone.0,
+                section.try_into().unwrap(),
+                start.try_into().unwrap(),
+                end.try_into().unwrap(),
+                &raw mut result,
+            )
+        };
+        if e == 0 {
+            Ok(result.try_into().unwrap())
+        } else {
+            Err(e.into())
+        }
     }
 
     pub fn nzones(&self, base: Base) -> Result<i32> {
