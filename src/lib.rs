@@ -24,6 +24,8 @@ pub use cgns_sys::{
 };
 use num_enum::TryFromPrimitive;
 use num_enum::TryFromPrimitiveError;
+
+#[derive(Debug)]
 pub struct Error(i32);
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -258,12 +260,13 @@ impl From<i32> for Error {
     }
 }
 
-impl Debug for Error {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let msg = unsafe { CStr::from_ptr(cg_get_error()) };
         write!(f, "{} (error {})", msg.to_str().unwrap(), self.0)
     }
 }
+impl std::error::Error for Error {}
 
 static CGNS_MUTEX: Mutex<()> = Mutex::new(());
 
