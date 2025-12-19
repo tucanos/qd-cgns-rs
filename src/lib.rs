@@ -37,6 +37,21 @@ impl TryFrom<u8> for ElementType {
     }
 }
 
+impl ElementType {
+    /// Get the number of nodes for an element type
+    ///
+    /// See `cg_npe` in CGNS documentation
+    pub fn npe(self) -> Result<usize> {
+        let mut result = 0;
+        let e = unsafe { cgns_sys::cg_npe(self, &raw mut result) };
+        if e == 0 {
+            Ok(e.try_into().unwrap())
+        } else {
+            Err(e.into())
+        }
+    }
+}
+
 pub enum Mode {
     Read,
     Write,
