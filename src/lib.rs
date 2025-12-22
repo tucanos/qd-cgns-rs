@@ -354,7 +354,7 @@ impl Default for DataType {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SectionInfo {
     pub section_name: String,
     pub typ: ElementType,
