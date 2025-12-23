@@ -344,6 +344,19 @@ impl File {
             section_info.end - section_info.start,
         ))
     }
+
+    /// Returns an iterator over the sections of a zone.
+    ///
+    /// This is a high level wrapper for `cg_nsections`.
+    pub fn section_iter(
+        &self,
+        base: Base,
+        zone: Zone,
+    ) -> Result<impl ExactSizeIterator<Item = crate::Section>> {
+        let nsec = self.nsections(base, zone)?;
+        Ok((0..nsec).map(|i| (i + 1).try_into().unwrap()))
+    }
+
     pub fn zone_pointers_read(&self, base: Base) -> Result<Vec<Vec<String>>> {
         let gc = match self.goto(base, &[("BaseIterativeData_t", 1).into()]) {
             Ok(x) => x,
