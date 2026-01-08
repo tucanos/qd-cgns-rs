@@ -341,7 +341,7 @@ impl File {
                 offset_buffer: vec![0],
                 elem_builder,
             },
-            section_info.end - section_info.start,
+            section_info.end - section_info.start + 1,
         ))
     }
 
