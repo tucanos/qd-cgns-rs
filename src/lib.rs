@@ -477,8 +477,14 @@ impl File {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut n_steps = 0;
         let mut name = [0_u8; 33];
-        let e =
-            unsafe { cg_biter_read(self.0, base.into(), name.as_mut_ptr().cast(), &raw mut n_steps) };
+        let e = unsafe {
+            cg_biter_read(
+                self.0,
+                base.into(),
+                name.as_mut_ptr().cast(),
+                &raw mut n_steps,
+            )
+        };
         if e == 0 {
             Ok((raw_to_string(&name), n_steps))
         } else {
@@ -524,7 +530,8 @@ impl File {
     pub fn ziter_write(&mut self, base: Base, zone: Zone, zone_iter_name: &str) -> Result<()> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let zone_iter_name = CString::new(zone_iter_name).unwrap();
-        let e = unsafe { cg_ziter_write(self.0, base.into(), zone.into(), zone_iter_name.as_ptr()) };
+        let e =
+            unsafe { cg_ziter_write(self.0, base.into(), zone.into(), zone_iter_name.as_ptr()) };
         if e == 0 { Ok(()) } else { Err(e.into()) }
     }
 
@@ -534,7 +541,11 @@ impl File {
         let basename = CString::new(basename).unwrap();
         let mut b: i32 = 0;
         let e = unsafe { cg_base_write(self.0, basename.as_ptr(), cell_dim, phys_dim, &raw mut b) };
-        if e == 0 { Ok(b.try_into().unwrap()) } else { Err(e.into()) }
+        if e == 0 {
+            Ok(b.try_into().unwrap())
+        } else {
+            Err(e.into())
+        }
     }
     pub fn zone_write(
         &mut self,
@@ -562,7 +573,11 @@ impl File {
                 &raw mut z,
             )
         };
-        if e == 0 { Ok(z.try_into().unwrap()) } else { Err(e.into()) }
+        if e == 0 {
+            Ok(z.try_into().unwrap())
+        } else {
+            Err(e.into())
+        }
     }
 
     // https://cgns.github.io/CGNS_docs_current/midlevel/grid.html
@@ -777,8 +792,15 @@ impl File {
     pub fn element_data_size(&self, base: Base, zone: Zone, section: Section) -> Result<usize> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let mut r = 0;
-        let e =
-            unsafe { cgns_sys::cg_ElementDataSize(self.0, base.into(), zone.into(), section.into(), &raw mut r) };
+        let e = unsafe {
+            cgns_sys::cg_ElementDataSize(
+                self.0,
+                base.into(),
+                zone.into(),
+                section.into(),
+                &raw mut r,
+            )
+        };
         if e == 0 {
             Ok(r as usize)
         } else {
