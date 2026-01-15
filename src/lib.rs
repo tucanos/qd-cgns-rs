@@ -46,7 +46,7 @@ impl ElementType {
         let mut result = 0;
         let e = unsafe { cgns_sys::cg_npe(self, &raw mut result) };
         if e == 0 {
-            Ok(e.try_into().unwrap())
+            Ok(result.try_into().unwrap())
         } else {
             Err(e.into())
         }
