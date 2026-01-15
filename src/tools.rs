@@ -1,5 +1,5 @@
 use crate::{
-    Base, DataType, File, GotoContext, PointSetType, Result, Zone, cgns_sys, cgsize,
+    Base, DataType, ElementType, File, GotoContext, PointSetType, Result, Zone, cgns_sys, cgsize,
     tools::buffered_iterator::{BufferedIterator, ChunkSource},
 };
 use std::{ffi::CStr, iter};
@@ -228,6 +228,53 @@ where
     }
 }
 
+struct ElementsSource<'a, IM> {
+    file: &'a File,
+    base: Base,
+    zone: Zone,
+    section: crate::Section,
+    elem_buffer: Vec<cgsize>,
+    elem_builder: IM,
+    num_vert_by_elem: usize,
+}
+
+impl<IM, IT> ChunkSource for ElementsSource<'_, IM>
+where
+    IM: Fn(&[cgsize]) -> IT,
+{
+    type Item = IT;
+    type Error = crate::Error;
+
+    fn load_chunk(&mut self, start: usize, len: usize) -> Result<()> {
+        let range_min = start + 1;
+        let range_max = start + len;
+        self.elem_buffer.resize(len * self.num_vert_by_elem, 0);
+        self.file.elements_partial_read(
+            self.base,
+            self.zone,
+            self.section,
+            range_min,
+            range_max,
+            &mut self.elem_buffer,
+            &mut [],
+        )?;
+        Ok(())
+    }
+
+    fn get_from_buffer(&self, offset: usize) -> Self::Item {
+        let o = offset * self.num_vert_by_elem;
+        (self.elem_builder)(&self.elem_buffer[o..o + self.num_vert_by_elem])
+    }
+
+    fn chunk_size(&self) -> usize {
+        self.elem_buffer.len() / self.num_vert_by_elem
+    }
+
+    fn clear_chunk(&mut self) {
+        self.elem_buffer.clear();
+    }
+}
+
 impl GotoContext<'_> {
     pub fn array_info_from_name(&self, name: &str) -> Result<Option<(i32, DataType, Vec<usize>)>> {
         let na = self.narrays()?;
@@ -318,6 +365,40 @@ impl File {
     /// Returns a buffered iterator over the elements of a zone section.
     ///
     /// This reads data in chunks to save memory, rather than loading all elements at once.
+    /// This is a high level wrapper of `cg_elements_partial_read`.
+    ///
+    /// # Arguments
+    /// * `elem_builder`: A closure that converts the raw node indices slice (`&[cgsize]`)
+    ///   into your desired type `IT`.
+    pub fn elements_iter<'a, IT>(
+        &'a self,
+        base: Base,
+        zone: Zone,
+        section: crate::Section,
+        elem_builder: impl Fn(&[cgsize]) -> IT + 'a,
+    ) -> Result<impl ExactSizeIterator<Item = Result<IT>> + 'a> {
+        let (section_info, _) = self.section_read(base, zone, section)?;
+        let typ = section_info.typ;
+        assert!(
+            typ != ElementType::MIXED,
+            "Unexpected section type: {typ:?}",
+        );
+        Ok(BufferedIterator::new(
+            ElementsSource {
+                file: self,
+                base,
+                zone,
+                section,
+                elem_buffer: Vec::new(),
+                elem_builder,
+                num_vert_by_elem: typ.npe()?,
+            },
+            section_info.end - section_info.start + 1,
+        ))
+    }
+    /// Returns a buffered iterator over the elements of a zone section.
+    ///
+    /// This reads data in chunks to save memory, rather than loading all elements at once.
     /// This is a high level wrapper of `cg_poly_elements_partial_read`.
     ///
     /// # Arguments
@@ -331,6 +412,8 @@ impl File {
         elem_builder: impl Fn(&[cgsize]) -> IT + 'a,
     ) -> Result<impl ExactSizeIterator<Item = Result<IT>> + 'a> {
         let (section_info, _) = self.section_read(base, zone, section)?;
+        let typ = section_info.typ;
+        assert_eq!(typ, ElementType::MIXED, "Unexpected section type: {typ:?}",);
         Ok(BufferedIterator::new(
             PolyElementsSource {
                 file: self,
