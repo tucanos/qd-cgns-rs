@@ -347,6 +347,12 @@ impl From<Section> for c_int {
     }
 }
 
+impl From<FlowSolution> for c_int {
+    fn from(value: FlowSolution) -> Self {
+        value.0
+    }
+}
+
 impl TryFrom<c_int> for Base {
     type Error = <NonZero<c_int> as TryFrom<c_int>>::Error;
 
@@ -950,6 +956,34 @@ impl File {
         } else {
             Err(e.into())
         }
+    }
+
+    #[allow(clippy::too_many_arguments)] // imposed by CGNS API
+    pub fn field_read<T: CgnsDataType>(
+        &self,
+        base: Base,
+        zone: Zone,
+        sol: FlowSolution,
+        rmin: &[cgsize],
+        rmax: &[cgsize],
+        field_name: &str,
+        field: &mut [T],
+    ) -> Result<()> {
+        let field_name = CString::new(field_name).unwrap();
+        let e = unsafe {
+            cgns_sys::cg_field_read(
+                self.0,
+                base.into(),
+                zone.into(),
+                sol.into(),
+                field_name.as_ptr(),
+                T::SYS,
+                rmin.as_ptr(),
+                rmax.as_ptr(),
+                field.as_mut_ptr().cast(),
+            )
+        };
+        if e == 0 { Ok(()) } else { Err(e.into()) }
     }
 
     pub fn sol_write(
