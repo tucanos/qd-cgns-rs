@@ -715,6 +715,31 @@ impl File {
         if e == 0 { Ok(c.try_into().unwrap()) } else { Err(e.into()) }
     }
 
+    pub fn section_partial_write(
+        &mut self,
+        base: Base,
+        zone: Zone,
+        args: &SectionInfo,
+    ) -> Result<Section> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let section_name = CString::new(args.section_name.clone()).unwrap();
+        let mut c = 0;
+        let e = unsafe {
+            cgns_sys::cg_section_partial_write(
+                self.0,
+                base.into(),
+                zone.into(),
+                section_name.as_ptr(),
+                args.typ,
+                args.start as cgsize,
+                args.end as cgsize,
+                args.nbndry,
+                &raw mut c,
+            )
+        };
+        if e == 0 { Ok(c.try_into().unwrap()) } else { Err(e.into()) }
+    }
+
     pub fn poly_section_write(
         &mut self,
         base: Base,
@@ -798,6 +823,33 @@ impl File {
                 end.try_into().unwrap(),
                 elements.as_mut_ptr(),
                 ptr,
+            )
+        };
+        if e == 0 { Ok(()) } else { Err(e.into()) }
+    }
+
+    pub fn elements_general_write<T>(
+        &self,
+        base: Base,
+        zone: Zone,
+        section: Section,
+        start: usize,
+        end: usize,
+        elements: &[T],
+    ) -> Result<()>
+    where
+        T: CgnsDataType,
+    {
+        let e = unsafe {
+            cgns_sys::cg_elements_general_write(
+                self.0,
+                base.into(),
+                zone.into(),
+                section.into(),
+                start.try_into().unwrap(),
+                end.try_into().unwrap(),
+                T::SYS,
+                elements.as_ptr().cast(),
             )
         };
         if e == 0 { Ok(()) } else { Err(e.into()) }
