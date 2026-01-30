@@ -237,12 +237,20 @@ impl GotoContext<'_> {
     }
 }
 
-impl CgnsDataType for i32 {
+impl CgnsDataType for cgns_sys::cgint_t {
     const SYS: DataType = DataType::Integer;
+}
+
+impl CgnsDataType for cgns_sys::cglong_t {
+    const SYS: DataType = DataType::LongInteger;
 }
 
 impl CgnsDataType for u8 {
     const SYS: DataType = DataType::Character;
+}
+
+impl CgnsDataType for f32 {
+    const SYS: DataType = DataType::RealSingle;
 }
 
 impl CgnsDataType for f64 {
