@@ -686,7 +686,7 @@ impl File {
         zone: Zone,
         args: &SectionInfo,
         elements: &[cgsize],
-    ) -> Result<()> {
+    ) -> Result<Section> {
         let _l = CGNS_MUTEX.lock().unwrap();
         let section_name = CString::new(args.section_name.clone()).unwrap();
         let mut c = 0;
@@ -704,7 +704,7 @@ impl File {
                 &raw mut c,
             )
         };
-        if e == 0 { Ok(()) } else { Err(e.into()) }
+        if e == 0 { Ok(c.try_into().unwrap()) } else { Err(e.into()) }
     }
 
     pub fn poly_section_write(
