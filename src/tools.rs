@@ -396,6 +396,38 @@ impl File {
             section_info.end - section_info.start + 1,
         ))
     }
+
+    /// High level wrapper for `cg_elements_general_write` which handle iterator buffering
+    pub fn write_elements_iter<const N: usize, T, I>(
+        &self,
+        base: Base,
+        zone: Zone,
+        section: crate::Section,
+        mut iter: I,
+    ) -> Result<()>
+    where
+        T: crate::CgnsDataType,
+        I: Iterator<Item = [T; N]>,
+    {
+        let chunk_size = 1024;
+        let mut buffer = Vec::with_capacity(chunk_size);
+        let mut current_start = 1; // CGNS uses 1-based indexing
+
+        loop {
+            buffer.clear();
+            buffer.extend(iter.by_ref().take(chunk_size).flatten());
+            if buffer.is_empty() {
+                break;
+            }
+            let num_in_chunk = buffer.len() / N;
+            let end = current_start + num_in_chunk - 1;
+            self.elements_general_write(base, zone, section, current_start, end, &buffer)?;
+            current_start += num_in_chunk;
+        }
+
+        Ok(())
+    }
+
     /// Returns a buffered iterator over the elements of a zone section.
     ///
     /// This reads data in chunks to save memory, rather than loading all elements at once.
