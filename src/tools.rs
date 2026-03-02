@@ -2,7 +2,7 @@ use crate::{
     Base, DataType, ElementType, File, GotoContext, PointSetType, Result, Zone, cgns_sys, cgsize,
     tools::buffered_iterator::{BufferedIterator, ChunkSource},
 };
-use std::{ffi::CStr, iter};
+use std::{array::from_fn, ffi::CStr, iter};
 
 mod buffered_iterator {
     use std::cmp::min;
@@ -156,7 +156,7 @@ impl ChunkSource for CoordSource<'_> {
     }
 
     fn get_from_buffer(&self, offset: usize) -> Self::Item {
-        std::array::from_fn(|i| self.buffer[i][offset])
+        from_fn(|i| self.buffer[i][offset])
     }
 
     fn chunk_size(&self) -> usize {
@@ -422,6 +422,57 @@ impl File {
             let num_in_chunk = buffer.len() / N;
             let end = current_start + num_in_chunk - 1;
             self.elements_general_write(base, zone, section, current_start, end, &buffer)?;
+            current_start += num_in_chunk;
+        }
+
+        Ok(())
+    }
+
+    /// High level wrapper for `cg_coord_general_write` which handle iterator buffering
+    pub fn write_coord_iter<'a, T, I>(&mut self, base: Base, zone: Zone, iter: I) -> Result<()>
+    where
+        T: crate::CgnsDataType + Copy + 'a,
+        I: IntoIterator<Item = &'a [T; 3]>,
+    {
+        const COORD_NAMES: [&str; 3] = ["CoordinateX", "CoordinateY", "CoordinateZ"];
+        let mut iter = iter.into_iter();
+        let chunk_size = 1024;
+
+        let mut buffers: [Vec<T>; 3] = from_fn(|_| Vec::with_capacity(chunk_size));
+        let mut current_start = 1; // CGNS uses 1-based indexing
+
+        loop {
+            for buffer in &mut buffers {
+                buffer.clear();
+            }
+
+            // Collect a chunk of points and de-interleave them into separate buffers
+            let mut num_in_chunk = 0;
+            for point in iter.by_ref().take(chunk_size) {
+                for i in 0..3 {
+                    buffers[i].push(point[i]);
+                }
+                num_in_chunk += 1;
+            }
+
+            if num_in_chunk == 0 {
+                break;
+            }
+
+            let end = current_start + num_in_chunk - 1;
+            for (i, name) in COORD_NAMES.iter().enumerate() {
+                self.coord_general_write::<T, T>(
+                    base,
+                    zone,
+                    name,
+                    &[current_start],
+                    &[end],
+                    &[num_in_chunk],
+                    &[1],
+                    &[num_in_chunk],
+                    &buffers[i],
+                )?;
+            }
             current_start += num_in_chunk;
         }
 

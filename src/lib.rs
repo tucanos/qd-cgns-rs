@@ -26,6 +26,8 @@ pub use cgns_sys::{
 use num_enum::TryFromPrimitive;
 use num_enum::TryFromPrimitiveError;
 
+use crate::cgns_sys::cg_coord_general_write;
+
 #[derive(Debug)]
 pub struct Error(i32);
 pub type Result<T> = std::result::Result<T, Error>;
@@ -617,6 +619,51 @@ impl File {
             )
         };
         if e == 0 { Ok(()) } else { Err(e.into()) }
+    }
+
+    #[allow(clippy::too_many_arguments)] // imposed by CGNS API
+    pub fn coord_general_write<ST, MT>(
+        &mut self,
+        base: Base,
+        zone: Zone,
+        coordname: &str,
+        rmin: &[cgsize],
+        rmax: &[cgsize],
+        dims: &[cgsize],
+        mem_rmin: &[cgsize],
+        mem_rmax: &[cgsize],
+        coord: &[MT],
+    ) -> Result<usize>
+    where
+        ST: CgnsDataType,
+        MT: CgnsDataType,
+    {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let coordname = CString::new(coordname).unwrap();
+        let mut c = 0;
+        let e = unsafe {
+            cg_coord_general_write(
+                self.0,
+                base.into(),
+                zone.into(),
+                coordname.as_ptr(),
+                ST::SYS,
+                rmin.as_ptr(),
+                rmax.as_ptr(),
+                MT::SYS,
+                dims.len() as c_int,
+                dims.as_ptr(),
+                mem_rmin.as_ptr(),
+                mem_rmax.as_ptr(),
+                coord.as_ptr().cast::<c_void>(),
+                &raw mut c,
+            )
+        };
+        if e == 0 {
+            Ok(c as usize)
+        } else {
+            Err(e.into())
+        }
     }
 
     pub fn zone_read(&self, base: Base, zone: Zone) -> Result<(String, [usize; 9])> {
