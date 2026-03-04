@@ -758,7 +758,11 @@ impl File {
                 &raw mut c,
             )
         };
-        if e == 0 { Ok(c.try_into().unwrap()) } else { Err(e.into()) }
+        if e == 0 {
+            Ok(c.try_into().unwrap())
+        } else {
+            Err(e.into())
+        }
     }
 
     pub fn section_partial_write(
@@ -783,7 +787,11 @@ impl File {
                 &raw mut c,
             )
         };
-        if e == 0 { Ok(c.try_into().unwrap()) } else { Err(e.into()) }
+        if e == 0 {
+            Ok(c.try_into().unwrap())
+        } else {
+            Err(e.into())
+        }
     }
 
     pub fn poly_section_write(
