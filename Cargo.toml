@@ -9,7 +9,7 @@ num_enum = "0.7.5"
 
 [build-dependencies]
 bindgen = "0.72.1"
-regex = "1.12.2"
+regex = "1.12.3"
 
 [lints.rust]
 unused = "deny"
