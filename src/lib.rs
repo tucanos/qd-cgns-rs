@@ -76,8 +76,7 @@ pub enum GotoQueryItem {
 impl GotoQueryItem {
     fn string(&self) -> &str {
         match self {
-            Self::Name(n) => n,
-            Self::LabelIndex(n, _) => n,
+            Self::Name(n) | Self::LabelIndex(n, _) => n,
         }
     }
     const fn index(&self) -> i32 {
