@@ -403,12 +403,13 @@ impl File {
         base: Base,
         zone: Zone,
         section: crate::Section,
-        mut iter: I,
+        iter: I,
     ) -> Result<()>
     where
         T: crate::CgnsDataType,
-        I: Iterator<Item = [T; N]>,
+        I: IntoIterator<Item = [T; N]>,
     {
+        let mut iter = iter.into_iter();
         let chunk_size = 1024;
         let mut buffer = Vec::with_capacity(chunk_size);
         let mut current_start = 1; // CGNS uses 1-based indexing
