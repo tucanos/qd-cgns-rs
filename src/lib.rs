@@ -1100,6 +1100,61 @@ impl File {
         if e == 0 { Ok(()) } else { Err(e.into()) }
     }
 
+    pub fn sol_info(
+        &self,
+        base: Base,
+        zone: Zone,
+        sol: FlowSolution,
+    ) -> Result<(String, GridLocation)> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let mut grid_location = GridLocation::GridLocationNull;
+        let mut raw_name = [0_u8; 256];
+        let e = unsafe {
+            cgns_sys::cg_sol_info(
+                self.0,
+                base.into(),
+                zone.into(),
+                sol.0,
+                raw_name.as_mut_ptr().cast(),
+                &raw mut grid_location,
+            )
+        };
+        if e == 0 {
+            Ok((raw_to_string(&raw_name), grid_location))
+        } else {
+            Err(e.into())
+        }
+    }
+
+    pub fn sol_size(
+        &self,
+        base: Base,
+        zone: Zone,
+        sol: FlowSolution,
+    ) -> Result<(usize, [usize; 3])> {
+        let _l = CGNS_MUTEX.lock().unwrap();
+        let mut data_dim = 0;
+        let mut dim_vals = [0; 3];
+        let e = unsafe {
+            cgns_sys::cg_sol_size(
+                self.0,
+                base.into(),
+                zone.into(),
+                sol.0,
+                &raw mut data_dim,
+                dim_vals.as_mut_ptr(),
+            )
+        };
+        if e == 0 {
+            Ok((
+                usize::try_from(data_dim).unwrap(),
+                dim_vals.map(|x| usize::try_from(x).unwrap()),
+            ))
+        } else {
+            Err(e.into())
+        }
+    }
+
     pub fn sol_write(
         &mut self,
         base: Base,

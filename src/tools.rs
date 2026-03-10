@@ -1,5 +1,6 @@
 use crate::{
-    Base, DataType, ElementType, File, GotoContext, PointSetType, Result, Zone, cgns_sys, cgsize,
+    Base, CgnsDataType, DataType, ElementType, File, FlowSolution, GotoContext, PointSetType,
+    Result, Zone, cgns_sys, cgsize,
     tools::buffered_iterator::{BufferedIterator, ChunkSource},
 };
 use std::{array::from_fn, ffi::CStr, iter};
@@ -228,6 +229,50 @@ where
     }
 }
 
+struct FieldSource<'a, T> {
+    file: &'a File,
+    base: Base,
+    zone: Zone,
+    sol: FlowSolution,
+    field_name: &'a str,
+    buffer: Vec<T>,
+}
+
+impl<T> ChunkSource for FieldSource<'_, T>
+where
+    T: Copy + CgnsDataType + Default,
+{
+    type Item = T;
+
+    type Error = crate::Error;
+
+    fn load_chunk(&mut self, start: usize, len: usize) -> std::result::Result<(), Self::Error> {
+        self.buffer.resize(len, T::default());
+        self.file.field_read(
+            self.base,
+            self.zone,
+            self.sol,
+            &[(start + 1).try_into().unwrap()],
+            &[(start + len).try_into().unwrap()],
+            self.field_name,
+            &mut self.buffer[..len],
+        )?;
+        Ok(())
+    }
+
+    fn get_from_buffer(&self, offset: usize) -> Self::Item {
+        self.buffer[offset]
+    }
+
+    fn chunk_size(&self) -> usize {
+        self.buffer.len()
+    }
+
+    fn clear_chunk(&mut self) {
+        self.buffer.clear();
+    }
+}
+
 struct ElementsSource<'a, IM> {
     file: &'a File,
     base: Base,
@@ -362,6 +407,36 @@ impl File {
         ))
     }
 
+    /// Returns a buffered iterator over the field values of a flow solution.
+    ///
+    /// This reads data in chunks to save memory, rather than loading all values at once.
+    /// This is a high level wrapper of `cg_field_read`.
+    pub fn field_read_iter<'a, T>(
+        &'a self,
+        base: Base,
+        zone: Zone,
+        sol: FlowSolution,
+        field_name: &'a str,
+    ) -> Result<impl ExactSizeIterator<Item = Result<T>> + 'a>
+    where
+        T: CgnsDataType + Copy + Default + 'a,
+    {
+        let (num_dims, dims) = self.sol_size(base, zone, sol)?;
+        assert!(num_dims == 1);
+        let size = dims[0];
+        Ok(BufferedIterator::new(
+            FieldSource {
+                file: self,
+                base,
+                zone,
+                sol,
+                field_name,
+                buffer: Vec::<T>::new(),
+            },
+            size,
+        ))
+    }
+
     /// Returns a buffered iterator over the elements of a zone section.
     ///
     /// This reads data in chunks to save memory, rather than loading all elements at once.
@@ -406,7 +481,7 @@ impl File {
         iter: I,
     ) -> Result<()>
     where
-        T: crate::CgnsDataType,
+        T: CgnsDataType,
         I: IntoIterator<Item = [T; N]>,
     {
         let mut iter = iter.into_iter();
@@ -432,7 +507,7 @@ impl File {
     /// High level wrapper for `cg_coord_general_write` which handle iterator buffering
     pub fn write_coord_iter<'a, T, I>(&mut self, base: Base, zone: Zone, iter: I) -> Result<()>
     where
-        T: crate::CgnsDataType + Copy + 'a,
+        T: CgnsDataType + Copy + 'a,
         I: IntoIterator<Item = &'a [T; 3]>,
     {
         const COORD_NAMES: [&str; 3] = ["CoordinateX", "CoordinateY", "CoordinateZ"];
