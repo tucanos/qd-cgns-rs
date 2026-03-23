@@ -3,7 +3,7 @@ use crate::{
     Result, Zone, cgns_sys, cgsize,
     tools::buffered_iterator::{BufferedIterator, ChunkSource},
 };
-use std::{array::from_fn, ffi::CStr, iter};
+use std::{array::from_fn, borrow::Borrow, ffi::CStr, iter};
 
 mod buffered_iterator {
     use std::cmp::min;
@@ -508,7 +508,8 @@ impl File {
     pub fn write_coord_iter<'a, T, I>(&mut self, base: Base, zone: Zone, iter: I) -> Result<()>
     where
         T: CgnsDataType + Copy + 'a,
-        I: IntoIterator<Item = &'a [T; 3]>,
+        I: IntoIterator,
+        I::Item: Borrow<[T; 3]>,
     {
         const COORD_NAMES: [&str; 3] = ["CoordinateX", "CoordinateY", "CoordinateZ"];
         let mut iter = iter.into_iter();
@@ -525,6 +526,7 @@ impl File {
             // Collect a chunk of points and de-interleave them into separate buffers
             let mut num_in_chunk = 0;
             for point in iter.by_ref().take(chunk_size) {
+                let point = point.borrow();
                 for i in 0..3 {
                     buffers[i].push(point[i]);
                 }
