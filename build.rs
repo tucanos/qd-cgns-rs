@@ -21,7 +21,9 @@ impl ParseCallbacks for DeriveEnumPrimitive {
 }
 
 fn replace_string<P: AsRef<Path>>(filename: P, oldre: &Regex, newstr: &str) -> String {
-    let file = File::open(filename).expect("Unable to open file");
+    let file = File::open(&filename).unwrap_or_else(|err| {
+        panic!("Unable to open file '{}': {}", filename.as_ref().display(), err)
+    });
     let reader = BufReader::new(file);
     let mut res = String::new();
     for line in reader.lines() {
